@@ -22,17 +22,32 @@ const mainNavItems: NavItem[] = [
         href: dashboard(),
         icon: LayoutGrid,
     },
+    {
+        title: 'Carrera',
+        href: '/carrera',
+        icon: BookOpen,
+    },
+    {
+        title: 'Materia',
+        href: '/materia',
+        icon: BookOpen,
+    },
+    {
+        title: 'Plan Estudio',
+        href: '/planes-estudio',
+        icon: BookOpen,
+    },
 ];
 
 const footerNavItems: NavItem[] = [
     {
         title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
+        href: 'https://github.com/Jorcase/ExaDocs',
         icon: Folder,
     },
     {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
+        title: 'Ciencias Exactas',
+        href: 'https://exactas.unsa.edu.ar/',
         icon: BookOpen,
     },
 ];

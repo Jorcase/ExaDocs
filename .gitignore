@@ -1,4 +1,6 @@
 /.phpunit.cache
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitignore
 /bootstrap/ssr
 /node_modules
 /public/build
@@ -8,6 +10,12 @@
 /resources/js/routes
 /resources/js/wayfinder
 /storage/*.key
+/storage/app/public
+/storage/framework/cache/data
+/storage/framework/sessions
+/storage/framework/testing
+/storage/framework/views
+/storage/logs
 /storage/pail
 /vendor
 .DS_Store

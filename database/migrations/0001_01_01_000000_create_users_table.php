@@ -18,6 +18,8 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
+            $table->enum('status', ['active', 'suspended', 'pending'])->default('pending');
+            $table->timestamp('last_login_at')->nullable();
             $table->timestamps();
         });
 
