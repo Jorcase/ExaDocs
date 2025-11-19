@@ -15,7 +15,6 @@ class Plan_Estudio extends Model
     protected $fillable = [
         'carrera_id',
         'nombre',
-        'version',
         'anio_plan',
         'estado',
         'vigente_desde',

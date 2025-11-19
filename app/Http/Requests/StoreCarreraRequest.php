@@ -22,6 +22,7 @@ class StoreCarreraRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'tipo_carrera_id' => ['required', 'integer', 'exists:tipo_carreras,id'],
             'nombre' => ['required', 'string', 'max:150'],
             'codigo' => ['required', 'string', 'max:20', 'unique:carreras,codigo'],
             'descripcion' => ['nullable', 'string'],

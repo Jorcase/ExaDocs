@@ -24,7 +24,6 @@ interface Plan {
     id: number;
     carrera_id: number;
     nombre: string;
-    version: string;
     anio_plan: number;
     estado: 'vigente' | 'no_vigente' | 'discontinuado';
     vigente_desde?: string | null;
@@ -53,7 +52,6 @@ export default function Edit({
     const { data, setData, put, processing, errors } = useForm({
         carrera_id: plan.carrera_id,
         nombre: plan.nombre,
-        version: plan.version,
         anio_plan: plan.anio_plan,
         estado: plan.estado,
         vigente_desde: plan.vigente_desde ?? '',
@@ -102,18 +100,6 @@ export default function Edit({
                         />
                         {errors.nombre && (
                             <p className="text-sm text-destructive">{errors.nombre}</p>
-                        )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label htmlFor="version">Versión</Label>
-                        <Input
-                            id="version"
-                            value={data.version}
-                            onChange={(e) => setData('version', e.target.value)}
-                        />
-                        {errors.version && (
-                            <p className="text-sm text-destructive">{errors.version}</p>
                         )}
                     </div>
 

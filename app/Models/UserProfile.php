@@ -27,4 +27,9 @@ class UserProfile extends Model
     {
         return $this->belongsTo(Carrera::class, 'carrera_principal_id');
     }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->avatar_path ? asset('storage/' . $this->avatar_path) : null;
+    }
 }

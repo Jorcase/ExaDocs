@@ -15,8 +15,14 @@ import { Head, useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import { type FormEvent } from 'react';
 
+interface TipoOption {
+    id: number;
+    nombre: string;
+}
+
 interface Carrera {
     id: number;
+    tipo_carrera_id: number | null;
     nombre: string;
     codigo: string;
     descripcion?: string | null;
@@ -28,7 +34,7 @@ const estados = [
     { value: 'inactiva', label: 'Inactiva' },
 ];
 
-export default function Edit({ carrera }: { carrera: Carrera }) {
+export default function Edit({ carrera, tipos }: { carrera: Carrera; tipos: TipoOption[] }) {
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Carreras',
@@ -41,6 +47,7 @@ export default function Edit({ carrera }: { carrera: Carrera }) {
     ];
 
     const { data, setData, put, processing, errors } = useForm({
+        tipo_carrera_id: carrera.tipo_carrera_id ?? '',
         nombre: carrera.nombre,
         codigo: carrera.codigo,
         descripcion: carrera.descripcion ?? '',
@@ -57,6 +64,33 @@ export default function Edit({ carrera }: { carrera: Carrera }) {
             <Head title={`Carreras | Editar ${carrera.nombre}`} />
             <div className="w-full max-w-3xl p-4">
                 <form onSubmit={handleUpdate} className="space-y-4">
+                    <div className="space-y-1.5">
+                        <Label>Tipo de carrera</Label>
+                        <Select
+                            value={
+                                data.tipo_carrera_id === ''
+                                    ? ''
+                                    : String(data.tipo_carrera_id)
+                            }
+                            onValueChange={(value) =>
+                                setData('tipo_carrera_id', Number(value))
+                            }
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Seleccioná un tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {tipos.map((tipo) => (
+                                    <SelectItem key={tipo.id} value={String(tipo.id)}>
+                                        {tipo.nombre}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.tipo_carrera_id && (
+                            <p className="text-sm text-destructive">{errors.tipo_carrera_id}</p>
+                        )}
+                    </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="nombre">Nombre</Label>
                         <Input

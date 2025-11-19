@@ -21,15 +21,12 @@ return new class extends Migration
             $table->string('titulo', 150);
             $table->text('descripcion')->nullable();
             $table->string('file_path', 255);
-            $table->string('storage_disk', 50)->default('public');
-            $table->string('hash_archivo', 64)->nullable();
             $table->unsignedBigInteger('peso_bytes')->nullable();
             $table->json('metadata')->nullable();
             $table->text('observaciones_admin')->nullable();
             $table->timestamp('publicado_en')->nullable();
             $table->softDeletes();
             $table->timestamps();
-            $table->unique(['user_id', 'hash_archivo']);
         });
     }
 

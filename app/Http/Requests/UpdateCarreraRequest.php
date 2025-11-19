@@ -24,6 +24,7 @@ class UpdateCarreraRequest extends FormRequest
         $carreraId = $this->route('carrera')?->id;
 
         return [
+            'tipo_carrera_id' => ['required', 'integer', 'exists:tipo_carreras,id'],
             'nombre' => ['required', 'string', 'max:150'],
             'codigo' => ['required', 'string', 'max:20', 'unique:carreras,codigo,' . $carreraId],
             'descripcion' => ['nullable', 'string'],

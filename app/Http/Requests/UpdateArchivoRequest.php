@@ -11,7 +11,7 @@ class UpdateArchivoRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,7 +22,21 @@ class UpdateArchivoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'carrera_id' => ['required', 'exists:carreras,id'],
+            'materia_id' => ['required', 'exists:materias,id'],
+            'tipo_archivo_id' => ['required', 'exists:tipos_archivos,id'],
+            'plan_estudio_id' => ['nullable', 'exists:plan_estudios,id'],
+            'estado_archivo_id' => ['required', 'exists:estados_archivo,id'],
+            'titulo' => ['required', 'string', 'max:150'],
+            'descripcion' => ['nullable', 'string'],
+            'archivo' => [
+                'nullable',
+                'file',
+                'max:51200', // 50MB
+                'mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx,csv',
+            ],
+            'metadata' => ['nullable', 'array'],
+            'observaciones_admin' => ['nullable', 'string'],
         ];
     }
 }

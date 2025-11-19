@@ -19,6 +19,7 @@ class Carrera extends Model
     use HasFactory;
 
     protected $fillable = [
+        'tipo_carrera_id',
         'nombre',
         'codigo',
         'descripcion',
@@ -40,5 +41,10 @@ class Carrera extends Model
     public function perfiles()
     {
         return $this->hasMany(UserProfile::class, 'carrera_principal_id');
+    }
+
+    public function tipoCarrera()
+    {
+        return $this->belongsTo(TipoCarrera::class);
     }
 }

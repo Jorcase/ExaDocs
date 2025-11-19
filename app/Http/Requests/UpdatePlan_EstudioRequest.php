@@ -24,7 +24,6 @@ class UpdatePlan_EstudioRequest extends FormRequest
         return [
             'carrera_id' => ['required', 'exists:carreras,id'],
             'nombre' => ['required', 'string', 'max:150'],
-            'version' => ['required', 'string', 'max:50'],
             'anio_plan' => ['required', 'integer', 'digits:4'],
             'estado' => ['required', 'in:vigente,no_vigente,discontinuado'],
             'vigente_desde' => ['nullable', 'date'],

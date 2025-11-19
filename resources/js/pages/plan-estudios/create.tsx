@@ -39,7 +39,6 @@ export default function Create({
     const { data, setData, post, processing, errors } = useForm({
         carrera_id: '' as number | '',
         nombre: '',
-        version: '',
         anio_plan: new Date().getFullYear(),
         estado: 'vigente' as 'vigente' | 'no_vigente' | 'discontinuado',
         vigente_desde: '',
@@ -88,19 +87,6 @@ export default function Create({
                         />
                         {errors.nombre && (
                             <p className="text-sm text-destructive">{errors.nombre}</p>
-                        )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label htmlFor="version">Versión</Label>
-                        <Input
-                            id="version"
-                            placeholder="Ej. Plan 2024"
-                            value={data.version}
-                            onChange={(e) => setData('version', e.target.value)}
-                        />
-                        {errors.version && (
-                            <p className="text-sm text-destructive">{errors.version}</p>
                         )}
                     </div>
 

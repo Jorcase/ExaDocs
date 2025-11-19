@@ -13,7 +13,13 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
-import { type FormEvent } from 'react';
+import { type FormEvent, useEffect, useMemo } from 'react';
+
+interface Carrera {
+    id: number;
+    nombre: string;
+    planesEstudio: { id: number; nombre: string; carrera_id: number }[];
+}
 
 interface Materia {
     id: number;
@@ -29,7 +35,17 @@ const tipos = [
     { value: 'taller', label: 'Taller' },
 ];
 
-export default function Edit({ materia }: { materia: Materia }) {
+export default function Edit({
+    materia,
+    carreras,
+}: {
+    materia: Materia & {
+        carreras?: { id: number; nombre: string }[];
+        planes_estudio?: { id: number; nombre: string; carrera_id: number }[];
+        planesEstudio?: { id: number; nombre: string; carrera_id: number }[];
+    };
+    carreras: Carrera[];
+}) {
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Materias',
@@ -46,11 +62,60 @@ export default function Edit({ materia }: { materia: Materia }) {
         codigo: materia.codigo,
         descripcion: materia.descripcion ?? '',
         tipo: materia.tipo,
+        asignaciones: [] as { carrera_id: number | ''; plan_estudio_id: number | '' }[],
     });
+
+    useEffect(() => {
+        const planes = materia.planesEstudio ?? (materia as any).planes_estudio ?? [];
+        const carrerasMateria = materia.carreras ?? [];
+        const asignaciones: { carrera_id: number | ''; plan_estudio_id: number | '' }[] = [];
+
+        planes.forEach((plan) => {
+            asignaciones.push({
+                carrera_id: plan.carrera_id,
+                plan_estudio_id: plan.id,
+            });
+        });
+
+        carrerasMateria.forEach((c) => {
+            const yaEsta = asignaciones.some((a) => a.carrera_id === c.id);
+            if (!yaEsta) {
+                asignaciones.push({
+                    carrera_id: c.id,
+                    plan_estudio_id: '',
+                });
+            }
+        });
+
+        setData((prev) => ({
+            ...prev,
+            asignaciones,
+        }));
+    }, [materia, setData]);
+
+    const planesPorCarrera = useMemo(() => {
+        const map = new Map<number, { id: number; nombre: string; carrera_id: number }[]>();
+        carreras.forEach((c) => {
+            const planes = (c as any).planesEstudio ?? (c as any).planes_estudio ?? [];
+            map.set(c.id, planes);
+        });
+        return map;
+    }, [carreras]);
 
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         put(route('materias.update', materia.id));
+    };
+
+    const handleAddAsignacion = () => {
+        setData('asignaciones', [...data.asignaciones, { carrera_id: '', plan_estudio_id: '' }]);
+    };
+
+    const handleRemoveAsignacion = (idx: number) => {
+        setData(
+            'asignaciones',
+            data.asignaciones.filter((_, i) => i !== idx),
+        );
     };
 
     return (
@@ -116,6 +181,99 @@ export default function Edit({ materia }: { materia: Materia }) {
                         {errors.tipo && (
                             <p className="text-sm text-destructive">{errors.tipo}</p>
                         )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <Label>Asignar a carreras / planes</Label>
+                            <Button type="button" variant="secondary" onClick={handleAddAsignacion}>
+                                Agregar asignación
+                            </Button>
+                        </div>
+                        {data.asignaciones.length === 0 && (
+                            <p className="text-sm text-muted-foreground">Aún no agregaste ninguna carrera.</p>
+                        )}
+                        <div className="space-y-3">
+                            {data.asignaciones.map((asig, idx) => (
+                                <div key={idx} className="flex flex-col gap-3 rounded border p-3">
+                                    <div className="space-y-1.5">
+                                        <Label>Carrera</Label>
+                                        <Select
+                                            value={asig.carrera_id === '' ? '' : String(asig.carrera_id)}
+                                            onValueChange={(v) => {
+                                                const updated = [...data.asignaciones];
+                                                updated[idx] = {
+                                                    carrera_id: Number(v),
+                                                    plan_estudio_id: '',
+                                                };
+                                                setData('asignaciones', updated);
+                                            }}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Seleccioná una carrera" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {carreras.map((c) => (
+                                                    <SelectItem key={c.id} value={String(c.id)}>
+                                                        {c.nombre}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {errors[`asignaciones.${idx}.carrera_id` as keyof typeof errors] && (
+                                            <p className="text-sm text-destructive">
+                                                {errors[`asignaciones.${idx}.carrera_id` as keyof typeof errors]}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label>Plan de estudio (opcional)</Label>
+                                        <Select
+                                            value={
+                                                asig.plan_estudio_id === '' ? '' : String(asig.plan_estudio_id)
+                                            }
+                                            onValueChange={(v) => {
+                                                const updated = [...data.asignaciones];
+                                                updated[idx] = {
+                                                    ...updated[idx],
+                                                    plan_estudio_id: v === '' ? '' : Number(v),
+                                                };
+                                                setData('asignaciones', updated);
+                                            }}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Seleccioná un plan (opcional)" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {(asig.carrera_id
+                                                    ? planesPorCarrera.get(Number(asig.carrera_id)) ?? []
+                                                    : []
+                                                ).map((plan) => (
+                                                    <SelectItem key={plan.id} value={String(plan.id)}>
+                                                        {plan.nombre}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {errors[`asignaciones.${idx}.plan_estudio_id` as keyof typeof errors] && (
+                                            <p className="text-sm text-destructive">
+                                                {errors[`asignaciones.${idx}.plan_estudio_id` as keyof typeof errors]}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => handleRemoveAsignacion(idx)}
+                                        >
+                                            Quitar
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     <Button disabled={processing} type="submit">

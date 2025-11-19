@@ -26,6 +26,9 @@ class StoreMateriaRequest extends FormRequest
             'codigo' => ['required', 'string', 'max:20', 'unique:materias,codigo'],
             'descripcion' => ['nullable', 'string'],
             'tipo' => ['required', 'in:obligatoria,optativa,taller'],
+            'asignaciones' => ['array'],
+            'asignaciones.*.carrera_id' => ['required', 'exists:carreras,id'],
+            'asignaciones.*.plan_estudio_id' => ['nullable', 'exists:plan_estudios,id'],
         ];
     }
 }

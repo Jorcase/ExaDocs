@@ -31,8 +31,14 @@ const estados = [
     { value: 'inactiva', label: 'Inactiva' },
 ];
 
-export default function Create() {
+interface TipoOption {
+    id: number;
+    nombre: string;
+}
+
+export default function Create({ tipos }: { tipos: TipoOption[] }) {
     const { data, setData, post, processing, errors } = useForm({
+        tipo_carrera_id: '' as number | '',
         nombre: '',
         codigo: '',
         descripcion: '',
@@ -49,6 +55,33 @@ export default function Create() {
             <Head title="Carreras | Crear" />
             <div className="w-full max-w-3xl p-4">
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-1.5">
+                        <Label>Tipo de carrera</Label>
+                        <Select
+                            value={
+                                data.tipo_carrera_id === ''
+                                    ? ''
+                                    : String(data.tipo_carrera_id)
+                            }
+                            onValueChange={(value) =>
+                                setData('tipo_carrera_id', Number(value))
+                            }
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Seleccioná un tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {tipos.map((tipo) => (
+                                    <SelectItem key={tipo.id} value={String(tipo.id)}>
+                                        {tipo.nombre}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.tipo_carrera_id && (
+                            <p className="text-sm text-destructive">{errors.tipo_carrera_id}</p>
+                        )}
+                    </div>
                     <div className="space-y-1.5">
                         <Label htmlFor="nombre">Nombre</Label>
                         <Input
