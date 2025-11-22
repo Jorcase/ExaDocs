@@ -14,7 +14,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { ChevronDown } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -38,6 +37,12 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   filterKey?: keyof TData & string;
   placeholder?: string;
+  endActions?: React.ReactNode;
+  onSortChange?: (column: string, direction: "asc" | "desc" | "") => void;
+  externalSort?: {
+    column: string;
+    direction: "asc" | "desc";
+  };
 }
 
 export function DataTable<TData, TValue>({
@@ -45,6 +50,9 @@ export function DataTable<TData, TValue>({
   data,
   filterKey,
   placeholder = "Filtrar...",
+  endActions,
+  onSortChange,
+  externalSort,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -52,30 +60,42 @@ export function DataTable<TData, TValue>({
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
 
   const table = useReactTable({
     data,
     columns,
-    onSortingChange: setSorting,
+    onSortingChange: onSortChange
+      ? (updater) => {
+          const next = typeof updater === "function" ? updater([]) : updater;
+          const first = next[0];
+          onSortChange(first?.id ?? "", first ? (first.desc ? "desc" : "asc") : "");
+          setSorting(next);
+        }
+      : setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
+    manualSorting: !!onSortChange,
     state: {
-      sorting,
+      sorting: externalSort
+        ? [
+            {
+              id: externalSort.column,
+              desc: externalSort.direction === "desc",
+            },
+          ]
+        : sorting,
       columnFilters,
-      columnVisibility,
-      rowSelection,
+      columnVisibility
     },
   });
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {filterKey && (
           <Input
             placeholder={placeholder}
@@ -86,30 +106,33 @@ export function DataTable<TData, TValue>({
             className="max-w-sm"
           />
         )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columnas <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  className="capitalize"
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) =>
-                    column.toggleVisibility(!!value)
-                  }
-                >
-                  {column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {endActions}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                Columnas <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) =>
+                      column.toggleVisibility(!!value)
+                    }
+                  >
+                    {column.id}
+                  </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>
@@ -158,31 +181,6 @@ export function DataTable<TData, TValue>({
             )}
           </TableBody>
         </Table>
-      </div>
-      <div className="flex items-center justify-end space-x-2 py-2">
-        <div className="text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} de
-          {" "}
-          {table.getFilteredRowModel().rows.length} fila(s) seleccionada(s).
-        </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Prev.
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Sig.
-          </Button>
-        </div>
       </div>
     </div>
   );

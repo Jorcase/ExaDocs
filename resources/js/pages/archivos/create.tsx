@@ -13,11 +13,18 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 
 interface Option {
     id: number;
     nombre?: string;
+}
+
+interface PlanOption {
+    id: number;
+    nombre: string;
+    carrera_id: number;
+    materias?: Option[];
 }
 
 interface CarreraOption {
@@ -32,10 +39,12 @@ export default function Create({
     carreras,
     tipos,
     estados,
+    planes,
 }: {
     carreras: CarreraOption[];
     tipos: Option[];
     estados: Option[];
+    planes: PlanOption[];
 }) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Archivos', href: route('archivos.index') },
@@ -66,6 +75,20 @@ export default function Create({
             forceFormData: true,
         });
     };
+
+    const planesDeCarrera = useMemo(
+        () => planes.filter((p) => p.carrera_id === data.carrera_id),
+        [planes, data.carrera_id],
+    );
+
+    const materiasDisponibles = useMemo(() => {
+        if (data.plan_estudio_id) {
+            return planesDeCarrera.find((p) => p.id === data.plan_estudio_id)?.materias ?? [];
+        }
+        return data.carrera_id
+            ? carreras.find((c) => c.id === data.carrera_id)?.materias ?? []
+            : [];
+    }, [data.carrera_id, data.plan_estudio_id, carreras, planesDeCarrera]);
 
     const renderSelect = (
         label: string,
@@ -104,28 +127,33 @@ export default function Create({
                         setData('plan_estudio_id', '');
                     }, carreras, errors.carrera_id)}
                     {renderSelect(
-                        'Materia',
-                        data.materia_id,
-                        (val) => setData('materia_id', val),
-                        data.carrera_id
-                            ? (carreras.find((c) => c.id === data.carrera_id)?.materias ?? [])
-                            : [],
-                        errors.materia_id,
-                        data.carrera_id ? 'Seleccioná una materia' : 'Elegí primero una carrera',
-                    )}
-                    {renderSelect(
                         'Plan de estudio',
                         data.plan_estudio_id,
-                        (val) => setData('plan_estudio_id', val),
-                        data.carrera_id
-                            ? (
-                                  carreras.find((c) => c.id === data.carrera_id)?.planesEstudio ??
-                                  carreras.find((c) => c.id === data.carrera_id)?.planes_estudio ??
-                                  []
-                              )
-                            : [],
+                        (val) => {
+                            setData('plan_estudio_id', val);
+                            setData('materia_id', '');
+                        },
+                        planesDeCarrera,
                         errors.plan_estudio_id,
                         'Opcional',
+                    )}
+                    {renderSelect(
+                        'Materia',
+                        data.materia_id,
+                        (val) => {
+                            setData('materia_id', val);
+                            if (!data.plan_estudio_id) {
+                                const planesConMateria = planesDeCarrera.filter((p) =>
+                                    p.materias?.some((m) => m.id === val),
+                                );
+                                if (planesConMateria.length === 1) {
+                                    setData('plan_estudio_id', planesConMateria[0].id);
+                                }
+                            }
+                        },
+                        materiasDisponibles,
+                        errors.materia_id,
+                        data.carrera_id ? 'Seleccioná una materia' : 'Elegí primero una carrera',
                     )}
                     {renderSelect('Tipo de archivo', data.tipo_archivo_id, (val) => setData('tipo_archivo_id', val), tipos, errors.tipo_archivo_id)}
                     {renderSelect('Estado', data.estado_archivo_id, (val) => setData('estado_archivo_id', val), estados, errors.estado_archivo_id)}

@@ -1,21 +1,16 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type Url } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/react';
-import {
-    Table,
-    TableBody,
-    TableCaption,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import Pagination from '@/components/pagination';
-import PdfButton from '@/components/pdf-button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { route } from 'ziggy-js';
+import { DataTable } from '@/components/data-table';
+import { type ColumnDef } from '@tanstack/react-table';
+import { ArrowUpDown } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { ListSection } from '@/components/list-section';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -35,78 +30,135 @@ interface TiposPaginated {
     links: Url[];
 }
 
-export default function Index({ tipos }: { tipos: TiposPaginated }) {
+interface Filters {
+    search?: string;
+    sort?: string;
+    direction?: 'asc' | 'desc';
+}
+
+export default function Index({ tipos, filters }: { tipos: TiposPaginated; filters?: Filters }) {
     const { processing, delete: destroy } = useForm();
+    const [sort, setSort] = useState<{ column: string; direction: 'asc' | 'desc' }>({
+        column: filters?.sort ?? 'id',
+        direction: (filters?.direction as 'asc' | 'desc') ?? 'desc',
+    });
+
+    const buildParams = (customSort?: { column: string; direction: 'asc' | 'desc' }) => ({
+        sort: customSort?.column ?? sort.column,
+        direction: customSort?.direction ?? sort.direction,
+    });
+
+    useEffect(() => {
+        setSort({
+            column: filters?.sort ?? 'id',
+            direction: (filters?.direction as 'asc' | 'desc') ?? 'desc',
+        });
+    }, [filters]);
+
+    const handleSort = (columnId: string, direction: 'asc' | 'desc') => {
+        setSort({ column: columnId, direction });
+        router.get(
+            route('tipo-archivos.index'),
+            buildParams({ column: columnId, direction }),
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
+
+    const columns: ColumnDef<TipoArchivo>[] = useMemo(
+        () => [
+            {
+                accessorKey: 'id',
+                header: ({ column }) => (
+                    <Button
+                        variant="ghost"
+                        className="px-0 font-semibold"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    >
+                        ID
+                        <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                ),
+                cell: ({ getValue }) => <span className="font-medium">{getValue<number>()}</span>,
+            },
+            {
+                accessorKey: 'nombre',
+                header: ({ column }) => (
+                    <Button
+                        variant="ghost"
+                        className="px-0 font-semibold"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    >
+                        Nombre
+                        <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                ),
+            },
+            {
+                accessorKey: 'descripcion',
+                header: <span className="pl-1">Descripción</span>,
+                cell: ({ getValue }) => getValue<string>() ?? <span className="text-muted-foreground">Sin detalle</span>,
+            },
+            {
+                id: 'actions',
+                header: <div className="text-right">Acciones</div>,
+                enableSorting: false,
+                cell: ({ row }) => {
+                    const tipo = row.original;
+                    return (
+                        <div className="flex w-full justify-end gap-2 pr-1">
+                            <Link href={route('tipo-archivos.edit', tipo.id)}>
+                                <Button size="sm" variant="secondary">
+                                    Editar
+                                </Button>
+                            </Link>
+                            <ConfirmDelete
+                                disabled={processing}
+                                onConfirm={() =>
+                                    destroy(route('tipo-archivos.destroy', tipo.id))
+                                }
+                                description="El tipo de archivo se eliminará definitivamente."
+                            >
+                                <Button size="sm" variant="destructive" disabled={processing}>
+                                    Eliminar
+                                </Button>
+                            </ConfirmDelete>
+                        </div>
+                    );
+                },
+            },
+        ],
+        [destroy, processing],
+    );
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Tipos de archivo | Listado" />
             <div className="m-4 space-y-4">
-                <Card>
-                    <CardContent className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                            <CardTitle className="text-lg font-semibold">Tipo de archivos</CardTitle>
-                            <p className="text-sm text-muted-foreground">Catálogo de formatos permitidos</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Link href={route('tipo-archivos.create')}>
-                                <Button>Crear tipo</Button>
-                            </Link>
-                            <PdfButton href={route('tipo-archivos.report')} label="Descargar PDF" />
-                        </div>
-                    </CardContent>
-                </Card>
+                <ListSection
+                    title="Tipo de archivos"
+                    description="Catálogo de formatos permitidos"
+                    actions={
+                        <Link href={route('tipo-archivos.create')}>
+                            <Button>Crear tipo</Button>
+                        </Link>
+                    }
+                />
                 <Card>
                     <CardContent className="space-y-4">
-                        {tipos.data.length > 0 ? (
-                            <>
-                                <Table>
-                                    <TableCaption>Listado de tipos de archivo.</TableCaption>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-[70px]">ID</TableHead>
-                                            <TableHead>Nombre</TableHead>
-                                            <TableHead>Descripción</TableHead>
-                                            <TableHead className="text-right">Acciones</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {tipos.data.map((tipo) => (
-                                            <TableRow key={tipo.id}>
-                                                <TableCell className="font-medium">{tipo.id}</TableCell>
-                                                <TableCell>{tipo.nombre}</TableCell>
-                                                <TableCell>
-                                                    {tipo.descripcion ?? (
-                                                        <span className="text-muted-foreground">Sin detalle</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right space-x-2">
-                                                    <Link href={route('tipo-archivos.edit', tipo.id)}>
-                                                        <Button variant="secondary">Editar</Button>
-                                                    </Link>
-                                                    <ConfirmDelete
-                                                        disabled={processing}
-                                                        onConfirm={() =>
-                                                            destroy(route('tipo-archivos.destroy', tipo.id))
-                                                        }
-                                                        description="El tipo de archivo se eliminará definitivamente."
-                                                    >
-                                                        <Button variant="destructive" disabled={processing}>
-                                                            Eliminar
-                                                        </Button>
-                                                    </ConfirmDelete>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                                <div className="flex justify-end">
-                                    <Pagination links={tipos.links} />
-                                </div>
-                            </>
-                        ) : (
-                            <p className="text-muted-foreground">Todavía no hay tipos de archivo cargados.</p>
-                        )}
+                        <DataTable
+                            columns={columns}
+                            data={tipos.data}
+                            filterKey="nombre"
+                            placeholder="Buscar por nombre..."
+                            externalSort={sort}
+                            onSortChange={(col, dir) => {
+                                if (!col || !dir) return;
+                                handleSort(col, dir as 'asc' | 'desc');
+                            }}
+                        />
+                        <div className="flex justify-end">
+                            <Pagination links={tipos.links} />
+                        </div>
                     </CardContent>
                 </Card>
             </div>

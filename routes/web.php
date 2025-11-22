@@ -1,5 +1,6 @@
 <?php
 
+use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\DashboardController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\UserController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -27,26 +29,27 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Tipos de carrera
-    Route::get('tipo-carreras', [TipoCarreraController::class, 'index'])->name('tipo-carreras.index');
-    Route::get('tipo-carreras/create', [TipoCarreraController::class, 'create'])->name('tipo-carreras.create');
-    Route::post('tipo-carreras', [TipoCarreraController::class, 'store'])->name('tipo-carreras.store');
-    Route::get('tipo-carreras/{tipoCarrera}', [TipoCarreraController::class, 'show'])->name('tipo-carreras.show');
-    Route::get('tipo-carreras/edit/{tipoCarrera}', [TipoCarreraController::class, 'edit'])->name('tipo-carreras.edit');
-    Route::put('tipo-carreras/{tipoCarrera}', [TipoCarreraController::class, 'update'])->name('tipo-carreras.update');
-    Route::delete('tipo-carreras/{tipoCarrera}', [TipoCarreraController::class, 'destroy'])->name('tipo-carreras.destroy');
+    Route::get('tipo-carreras', [TipoCarreraController::class, 'index'])->name('tipo-carreras.index')->can('view_tipocarrera');
+    Route::get('tipo-carreras/create', [TipoCarreraController::class, 'create'])->name('tipo-carreras.create')->can('view_tipocarrera');
+    Route::post('tipo-carreras', [TipoCarreraController::class, 'store'])->name('tipo-carreras.store')->can('view_tipocarrera');
+    Route::get('tipo-carreras/{tipoCarrera}', [TipoCarreraController::class, 'show'])->name('tipo-carreras.show')->can('view_tipocarrera');
+    Route::get('tipo-carreras/edit/{tipoCarrera}', [TipoCarreraController::class, 'edit'])->name('tipo-carreras.edit')->can('view_tipocarrera');
+    Route::put('tipo-carreras/{tipoCarrera}', [TipoCarreraController::class, 'update'])->name('tipo-carreras.update')->can('view_tipocarrera');
+    Route::delete('tipo-carreras/{tipoCarrera}', [TipoCarreraController::class, 'destroy'])->name('tipo-carreras.destroy')->can('view_tipocarrera');
 
     // Carreras
-    Route::get('carrera', [CarreraController::class, 'index'])->name('carreras.index');
+    Route::get('carrera', [CarreraController::class, 'index'])->name('carreras.index')->can('view_catalogos');
     Route::get('carreras/create', [CarreraController::class, 'create'])->name('carreras.create');
     Route::post('carreras', [CarreraController::class, 'store'])->name('carreras.store');
     Route::get('carreras/edit/{carrera}', [CarreraController::class, 'edit'])->name('carreras.edit');
     Route::put('carreras/{carrera}', [CarreraController::class, 'update'])->name('carreras.update');
     Route::delete('carreras/{carrera}', [CarreraController::class, 'destroy'])->name('carreras.destroy');
     Route::get('carreras/report', [CarreraController::class, 'generateReport'])->name('carreras.report');
-
+    Route::get('carreras/export', [CarreraController::class, 'exportCarreras'])->name('carreras.export');
+    
     // Materias
     Route::get('materia', [MateriaController::class, 'index'])->name('materias.index');
     Route::get('materias/create', [MateriaController::class, 'create'])->name('materias.create');
@@ -55,6 +58,7 @@ Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard'
     Route::put('materias/{materia}', [MateriaController::class, 'update'])->name('materias.update');
     Route::delete('materias/{materia}', [MateriaController::class, 'destroy'])->name('materias.destroy');
     Route::get('materias/report', [MateriaController::class, 'generateReport'])->name('materias.report');
+    Route::get('materias/export', [MateriaController::class, 'exportMaterias'])->name('materias.export');
 
     // Planes de estudio
     Route::get('planes-estudio', [PlanEstudioController::class, 'index'])->name('planes-estudio.index');
@@ -76,24 +80,25 @@ Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard'
     Route::delete('tipo-archivos/{tipoArchivo}', [TipoArchivoController::class, 'destroy'])->name('tipo-archivos.destroy');
 
     // Estado archivos
-    Route::get('estado-archivos', [EstadoArchivoController::class, 'index'])->name('estado-archivos.index');
-    Route::get('estado-archivos/create', [EstadoArchivoController::class, 'create'])->name('estado-archivos.create');
-    Route::post('estado-archivos', [EstadoArchivoController::class, 'store'])->name('estado-archivos.store');
-    Route::get('estado-archivos/{estadoArchivo}', [EstadoArchivoController::class, 'show'])->name('estado-archivos.show');
-    Route::get('estado-archivos/edit/{estadoArchivo}', [EstadoArchivoController::class, 'edit'])->name('estado-archivos.edit');
-    Route::put('estado-archivos/{estadoArchivo}', [EstadoArchivoController::class, 'update'])->name('estado-archivos.update');
-    Route::delete('estado-archivos/{estadoArchivo}', [EstadoArchivoController::class, 'destroy'])->name('estado-archivos.destroy');
+    Route::get('estado-archivos', [EstadoArchivoController::class, 'index'])->name('estado-archivos.index')->can('view_estadoarchivo');
+    Route::get('estado-archivos/create', [EstadoArchivoController::class, 'create'])->name('estado-archivos.create')->can('view_estadoarchivo');
+    Route::post('estado-archivos', [EstadoArchivoController::class, 'store'])->name('estado-archivos.store')->can('view_estadoarchivo');
+    Route::get('estado-archivos/{estadoArchivo}', [EstadoArchivoController::class, 'show'])->name('estado-archivos.show')->can('view_estadoarchivo');
+    Route::get('estado-archivos/edit/{estadoArchivo}', [EstadoArchivoController::class, 'edit'])->name('estado-archivos.edit')->can('view_estadoarchivo');
+    Route::put('estado-archivos/{estadoArchivo}', [EstadoArchivoController::class, 'update'])->name('estado-archivos.update')->can('view_estadoarchivo');
+    Route::delete('estado-archivos/{estadoArchivo}', [EstadoArchivoController::class, 'destroy'])->name('estado-archivos.destroy')->can('view_estadoarchivo');
 
     // Archivos
     Route::get('archivos', [ArchivoController::class, 'index'])->name('archivos.index');
     Route::get('archivos/create', [ArchivoController::class, 'create'])->name('archivos.create');
     Route::post('archivos', [ArchivoController::class, 'store'])->name('archivos.store');
-    Route::get('archivos/report', [ArchivoController::class, 'generateReport'])->name('archivos.report');
-    Route::get('archivos/{archivo}/report', [ArchivoController::class, 'generateDetailReport'])->name('archivos.detail-report');
+    Route::get('archivos/report', [ArchivoController::class, 'generateReport'])->name('archivos.report')->can('view_pdf');
+    Route::get('archivos/export', [ArchivoController::class, 'export'])->name('archivos.export')->can('view_excel');
+    Route::get('archivos/{archivo}/report', [ArchivoController::class, 'generateDetailReport'])->name('archivos.detail-report')->can('view_pdf');
     Route::get('archivos/{archivo}', [ArchivoController::class, 'show'])->name('archivos.show');
-    Route::get('archivos/edit/{archivo}', [ArchivoController::class, 'edit'])->name('archivos.edit');
-    Route::put('archivos/{archivo}', [ArchivoController::class, 'update'])->name('archivos.update');
-    Route::delete('archivos/{archivo}', [ArchivoController::class, 'destroy'])->name('archivos.destroy');
+    Route::get('archivos/edit/{archivo}', [ArchivoController::class, 'edit'])->name('archivos.edit')->can('update', 'archivo');
+    Route::put('archivos/{archivo}', [ArchivoController::class, 'update'])->name('archivos.update')->can('update', 'archivo');
+    Route::delete('archivos/{archivo}', [ArchivoController::class, 'destroy'])->name('archivos.destroy')->can('delete', 'archivo');
 
     // Historial revisiones
     Route::get('historial-revisiones', [HistorialRevisionController::class, 'index'])->name('historial-revisiones.index');
@@ -153,19 +158,27 @@ Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard'
     Route::get('perfiles/report', [UserProfileController::class, 'generateReport'])->name('perfiles.report');
 
     // Roles y permisos
-    Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index');
-    Route::get('permissions/create', [PermissionController::class, 'create'])->name('permissions.create');
-    Route::post('permissions', [PermissionController::class, 'store'])->name('permissions.store');
-    Route::get('permissions/{permiso}/edit', [PermissionController::class, 'edit'])->name('permissions.edit');
-    Route::put('permissions/{permiso}', [PermissionController::class, 'update'])->name('permissions.update');
-    Route::delete('permissions/{permiso}', [PermissionController::class, 'destroy'])->name('permissions.destroy');
+    Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index')->can('view_permisos');
+    Route::get('permissions/create', [PermissionController::class, 'create'])->name('permissions.create')->can('view_permisos');
+    Route::post('permissions', [PermissionController::class, 'store'])->name('permissions.store')->can('view_permisos');
+    Route::get('permissions/{permiso}/edit', [PermissionController::class, 'edit'])->name('permissions.edit')->can('view_permisos');
+    Route::put('permissions/{permiso}', [PermissionController::class, 'update'])->name('permissions.update')->can('view_permisos');
+    Route::delete('permissions/{permiso}', [PermissionController::class, 'destroy'])->name('permissions.destroy')->can('view_permisos');
 
-    Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
-    Route::get('roles/create', [RoleController::class, 'create'])->name('roles.create');
-    Route::post('roles', [RoleController::class, 'store'])->name('roles.store');
-    Route::get('roles/{role}/edit', [RoleController::class, 'edit'])->name('roles.edit');
-    Route::put('roles/{role}', [RoleController::class, 'update'])->name('roles.update');
-    Route::delete('roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+    Route::get('roles', [RoleController::class, 'index'])->name('roles.index')->can('view_roles');
+    Route::get('roles/create', [RoleController::class, 'create'])->name('roles.create')->can('view_roles');
+    Route::post('roles', [RoleController::class, 'store'])->name('roles.store')->can('view_roles');
+    Route::get('roles/{role}/edit', [RoleController::class, 'edit'])->name('roles.edit')->can('view_roles');
+    Route::put('roles/{role}', [RoleController::class, 'update'])->name('roles.update')->can('view_roles');
+    Route::delete('roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy')->can('view_roles');
+
+    // Usuarios (administración)
+    Route::get('users', [UserController::class, 'index'])->name('users.index')->can('view_usuarios');
+    Route::get('users/create', [UserController::class, 'create'])->name('users.create')->can('view_usuarios');
+    Route::post('users', [UserController::class, 'store'])->name('users.store')->can('view_usuarios');
+    Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit')->can('view_usuarios');
+    Route::put('users/{user}', [UserController::class, 'update'])->name('users.update')->can('view_usuarios');
+    Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->can('view_usuarios');
 });
 
 require __DIR__.'/settings.php';

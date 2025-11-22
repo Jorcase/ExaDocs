@@ -6,18 +6,67 @@ use App\Http\Requests\StorePlan_EstudioRequest;
 use App\Http\Requests\UpdatePlan_EstudioRequest;
 use App\Models\Plan_Estudio;
 use App\Models\Carrera;
+use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 
 class PlanEstudioController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $table = (new Plan_Estudio())->getTable();
+        $query = Plan_Estudio::query()->with('carrera:id,nombre');
+
+        $search = trim((string) $request->input('search', ''));
+        $anio = $request->input('anio');
+        $carreraId = $request->input('carrera_id');
+        $estados = array_filter(Arr::wrap($request->input('estado', [])));
+        $sort = $request->input('sort', 'id');
+        $direction = $request->input('direction', 'desc');
+
+        if ($search !== '') {
+            $query->where('nombre', 'like', '%' . $search . '%');
+        }
+
+        if ($anio !== null && $anio !== '') {
+            $query->where('anio_plan', (int) $anio);
+        }
+
+        if (!empty($estados)) {
+            $query->whereIn('estado', $estados);
+        }
+
+        if ($carreraId) {
+            $query->where('carrera_id', (int) $carreraId);
+        }
+
+        $allowedSorts = ['id', 'nombre', 'anio_plan', 'estado', 'carrera'];
+        if (!in_array($sort, $allowedSorts, true)) {
+            $sort = 'id';
+        }
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
+
+        if ($sort === 'carrera') {
+            $query->join('carreras', 'carreras.id', '=', "{$table}.carrera_id")
+                ->orderBy('carreras.nombre', $direction)
+                ->select("{$table}.*");
+        } else {
+            $query->orderBy($sort === 'anio_plan' ? 'anio_plan' : "{$table}.{$sort}", $direction);
+        }
+
         return inertia('plan-estudios/index', [
-            'planes' => Plan_Estudio::with('carrera:id,nombre')
-                ->latest()
-                ->paginate(10),
+            'planes' => $query->paginate(10)->withQueryString(),
+            'filters' => [
+                'search' => $search,
+                'anio' => $anio,
+                'estado' => $estados,
+                'carrera_id' => $carreraId,
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
+            'carreras' => Carrera::select('id', 'nombre')->orderBy('nombre')->get(),
         ]);
     }
 

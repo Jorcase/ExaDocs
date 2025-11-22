@@ -20,6 +20,13 @@ interface Option {
     nombre?: string;
 }
 
+interface PlanOption {
+    id: number;
+    nombre: string;
+    carrera_id: number;
+    materias?: Option[];
+}
+
 interface Archivo {
     id: number;
     carrera_id?: number | null;
@@ -40,11 +47,13 @@ export default function Edit({
     carreras,
     tipos,
     estados,
+    planes,
 }: {
     archivo: Archivo;
     carreras: { id: number; nombre: string; materias?: Option[]; planesEstudio?: Option[]; planes_estudio?: Option[] }[];
     tipos: Option[];
     estados: Option[];
+    planes: PlanOption[];
 }) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Archivos', href: route('archivos.index') },
@@ -79,6 +88,20 @@ export default function Edit({
             forceFormData: true,
         });
     };
+
+    const planesDeCarrera = useMemo(
+        () => planes.filter((p) => p.carrera_id === data.carrera_id),
+        [planes, data.carrera_id],
+    );
+
+    const materiasDisponibles = useMemo(() => {
+        if (data.plan_estudio_id) {
+            return planesDeCarrera.find((p) => p.id === data.plan_estudio_id)?.materias ?? [];
+        }
+        return data.carrera_id
+            ? carreras.find((c) => c.id === data.carrera_id)?.materias ?? []
+            : [];
+    }, [data.carrera_id, data.plan_estudio_id, carreras, planesDeCarrera]);
 
     const renderSelect = (
         label: string,
@@ -119,24 +142,29 @@ export default function Edit({
                     {renderSelect(
                         'Materia',
                         data.materia_id,
-                        (val) => setData('materia_id', val),
-                        data.carrera_id
-                            ? (carreras.find((c) => c.id === data.carrera_id)?.materias ?? [])
-                            : [],
+                        (val) => {
+                            setData('materia_id', val);
+                            if (!data.plan_estudio_id) {
+                                const planesConMateria = planesDeCarrera.filter((p) =>
+                                    p.materias?.some((m) => m.id === val),
+                                );
+                                if (planesConMateria.length === 1) {
+                                    setData('plan_estudio_id', planesConMateria[0].id);
+                                }
+                            }
+                        },
+                        materiasDisponibles,
                         errors.materia_id,
                         data.carrera_id ? 'Seleccioná una materia' : 'Elegí primero una carrera',
                     )}
                     {renderSelect(
                         'Plan de estudio',
                         data.plan_estudio_id,
-                        (val) => setData('plan_estudio_id', val),
-                        data.carrera_id
-                            ? (
-                                  carreras.find((c) => c.id === data.carrera_id)?.planesEstudio ??
-                                  carreras.find((c) => c.id === data.carrera_id)?.planes_estudio ??
-                                  []
-                              )
-                            : [],
+                        (val) => {
+                            setData('plan_estudio_id', val);
+                            setData('materia_id', '');
+                        },
+                        planesDeCarrera,
                         errors.plan_estudio_id,
                         'Opcional',
                     )}

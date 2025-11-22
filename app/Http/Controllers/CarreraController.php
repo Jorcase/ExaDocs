@@ -7,16 +7,43 @@ use App\Http\Requests\UpdateCarreraRequest;
 use App\Models\Carrera;
 use App\Models\TipoCarrera;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\CarrerasExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 
 class CarreraController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-       return inertia('carreras/index', [
-            'carreras' => Carrera::with('tipoCarrera:id,nombre')->latest()->paginate(10),
+        $search = $request->string('search');
+        $codigo = $request->string('codigo');
+        $estado = $request->input('estado', []);
+        $tipoCarreraIds = $request->input('tipo_carrera_ids', []);
+        $sort = $request->input('sort', 'id');
+        $direction = $request->input('direction', 'desc');
+
+        $table = (new Carrera())->getTable();
+        $query = $this->buildFilteredQuery($request);
+
+        [$sort, $direction] = $this->normalizeSort($sort, $direction);
+        $this->applySorting($query, $table, $sort, $direction);
+
+        return inertia('carreras/index', [
+            'carreras' => $query->paginate(10)->withQueryString(),
+            'filters' => [
+                'search' => $search->value(),
+                'codigo' => $codigo->value(),
+                'estado' => is_array($estado) ? $estado : [],
+                'tipo_carrera_ids' => is_array($tipoCarreraIds) ? $tipoCarreraIds : [],
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
+            'tipos' => TipoCarrera::select('id', 'nombre')->orderBy('nombre')->get(),
+            'codigos' => Carrera::select('codigo')->distinct()->pluck('codigo')->filter()->values(),
         ]);
     }
 
@@ -88,10 +115,83 @@ class CarreraController extends Controller
             ->with('success', "Carrera {$carrera->nombre} eliminada correctamente.");
     }
 
-    public function generateReport()
+    public function generateReport(Request $request)
     {
-        $carreras = Carrera::with('tipoCarrera:id,nombre')->select('id', 'nombre', 'codigo', 'descripcion', 'tipo_carrera_id')->orderBy('id')->get();
+        $sort = $request->input('sort', 'id');
+        $direction = $request->input('direction', 'desc');
+        [$sort, $direction] = $this->normalizeSort($sort, $direction);
+
+        $table = (new Carrera())->getTable();
+        $query = $this->buildFilteredQuery($request);
+        $this->applySorting($query, $table, $sort, $direction);
+
+        $carreras = $query->select("{$table}.id", "{$table}.nombre", "{$table}.codigo", "{$table}.descripcion", "{$table}.tipo_carrera_id")->get();
         $pdf = Pdf::loadView('pdf.carreras', compact('carreras'));
         return $pdf->stream('carreras.pdf');
+    }
+    public function exportCarreras()
+    {
+        $request = request();
+        $sort = $request->input('sort', 'id');
+        $direction = $request->input('direction', 'desc');
+        [$sort, $direction] = $this->normalizeSort($sort, $direction);
+
+        $table = (new Carrera())->getTable();
+        $query = $this->buildFilteredQuery($request);
+        $this->applySorting($query, $table, $sort, $direction);
+
+        $carreras = $query->select("{$table}.id", "{$table}.nombre", "{$table}.codigo", "{$table}.descripcion", "{$table}.tipo_carrera_id")->get();
+
+        return Excel::download(new CarrerasExport($carreras), 'carreras.xlsx');
+    }
+
+    private function buildFilteredQuery(Request $request): Builder
+    {
+        $search = $request->string('search');
+        $codigo = $request->string('codigo');
+        $estado = $request->input('estado', []);
+        $tipoCarreraIds = $request->input('tipo_carrera_ids', []);
+
+        $query = Carrera::with('tipoCarrera:id,nombre');
+
+        if ($search->isNotEmpty()) {
+            $query->where('nombre', 'like', '%' . $search . '%');
+        }
+
+        if ($codigo->isNotEmpty()) {
+            $query->where('codigo', 'like', '%' . $codigo . '%');
+        }
+
+        if (is_array($estado) && count($estado)) {
+            $query->whereIn('estado', $estado);
+        }
+
+        if (is_array($tipoCarreraIds) && count($tipoCarreraIds)) {
+            $query->whereIn('tipo_carrera_id', $tipoCarreraIds);
+        }
+
+        return $query;
+    }
+
+    private function normalizeSort(string $sort, string $direction): array
+    {
+        $allowedSorts = ['id', 'nombre', 'codigo', 'estado', 'tipo'];
+        if (!in_array($sort, $allowedSorts, true)) {
+            $sort = 'id';
+        }
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
+
+        return [$sort, $direction];
+    }
+
+    private function applySorting(Builder $query, string $table, string $sort, string $direction): void
+    {
+        if ($sort === 'tipo') {
+            $query->leftJoin('tipo_carreras', 'tipo_carreras.id', '=', "{$table}.tipo_carrera_id")
+                ->orderBy('tipo_carreras.nombre', $direction)
+                ->select("{$table}.*");
+        } else {
+            $query->orderBy("{$table}.{$sort}", $direction);
+        }
     }
 }

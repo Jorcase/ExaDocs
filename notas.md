@@ -15,4 +15,32 @@
 - AppSidebar con accesos a Carrera, Materia, Plan Estudio y Tipo Carrera.
 - Componentes Inertia para cada recurso (tables, forms, paginación reutilizable).
 
+## Layout genérico de listados
+- Se creó el componente `resources/js/components/list-section.tsx` para estandarizar el encabezado de cada listado (título, descripción y acciones).
+- Se aplicó a Tipo Carrera y Estado Archivo (sin DataTable porque son pocos registros) y se usa también en listados grandes junto al DataTable.
 
+## DataTable y filtros
+- Se reutiliza `resources/js/components/data-table.tsx` para listados con ordenamiento, búsqueda y selector de columnas.
+- Se armó un flujo completo (ej. Planes de estudio): controller recibe `sort/direction` y filtros, responde data paginada; en el front se pasa `externalSort` y `onSortChange` para ordenamiento server-side; los filtros viven en un Sheet lateral con botón “Filtros” y “Limpiar” sobre la tabla.
+- Para catálogos pequeños (Tipo Carrera / Estado Archivo) se mantiene tabla simple, solo encabezado con ListSection.
+
+## Correos habilitar/deshabilitar
+- Se agregó bandera `config('mail.notifications_enabled')` (env: `MAIL_NOTIFICATIONS_ENABLED`, default `false`).
+- Todos los mails (Archivo creado, Revisión, Comentario, Valoración, Reporte) se envían solo si la bandera está en `true`.
+- Para volver a habilitar: setear `MAIL_NOTIFICATIONS_ENABLED=true` en `.env` y ejecutar `php artisan config:clear`.
+
+## Notificaciones in-app
+- Tabla extendida: `notificaciones` ahora tiene `actor_id`, `archivo_id`, `titulo`, `mensaje`, `data` (JSON opcional) y `leido_en` (nueva migración de alter aplicada).
+- Modelo `Notificacion` actualizado: relaciones con `actor` y `archivo`, `data` casteado a array.
+- Servicio `App\Services\NotificacionService`: helper para crear notificaciones y para autor de archivo.
+- Eventos que generan notificación (además de correos si `MAIL_NOTIFICATIONS_ENABLED=true`):
+  - Al aprobar/rechazar un archivo (HistorialRevisionController).
+  - Al crear un comentario (ComentarioController).
+  - Al crear una valoración (ValoracionController).
+  - Al crear un reporte (ReporteContenidoController).
+- Pendiente: UI de campanita/dropdown y pantalla de “Notificaciones” para ver y marcar como leídas.
+
+# pendiente
+formatos de archivos para subir
+notificaciones
+cruds en archivos por ejemplo elegir carrera, si elijo una materia que me diga del plan que esta disponible esa carrera, porque sino se pueden elegir materias con plan de estudio que no son

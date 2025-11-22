@@ -13,9 +13,18 @@ return new class extends Migration
     {
         Schema::create('notificaciones', function (Blueprint $table) {
             $table->id();
+            // Destinatario de la notificación
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->string('tipo', 100);
-            $table->json('data');
+            // Quién generó la acción (opcional)
+            $table->foreignId('actor_id')->nullable()->constrained('users')->nullOnDelete();
+            // Archivo asociado (opcional)
+            $table->foreignId('archivo_id')->nullable()->constrained('archivos')->nullOnDelete();
+            // Tipo de evento (aprobado, rechazado, comentario, valoracion, reporte, etc.)
+            $table->string('tipo', 50);
+            $table->string('titulo');
+            $table->text('mensaje')->nullable();
+            // Detalles adicionales flexibles (estado nuevo, comentario, puntaje, etc.)
+            $table->json('data')->nullable();
             $table->timestamp('leido_en')->nullable();
             $table->timestamps();
         });

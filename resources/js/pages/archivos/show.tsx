@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import React, { Fragment } from 'react';
 import PdfButton from '@/components/pdf-button';
+import { usePermissions } from '@/hooks/use-permissions';
 
 interface Relacion {
     id: number;
@@ -57,6 +58,8 @@ interface EstadoOption {
 export default function Show({ archivo, estados }: { archivo: Archivo; estados: EstadoOption[] }) {
     const { props } = usePage<{ auth?: { user?: { id: number; name: string } } }>();
     const userId = props.auth?.user?.id;
+    const { can } = usePermissions();
+    const canViewPdf = can('view_pdf');
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Archivos', href: route('archivos.index') },
@@ -126,9 +129,11 @@ export default function Show({ archivo, estados }: { archivo: Archivo; estados: 
                                 <p className="text-sm text-muted-foreground">{archivo.descripcion}</p>
                             )}
                         </div>
-                        <div>
-                            <PdfButton href={route('archivos.detail-report', archivo.id)} label="Exportar PDF" />
-                        </div>
+                        {canViewPdf && (
+                            <div className="flex gap-2">
+                                <PdfButton href={route('archivos.detail-report', archivo.id)} />
+                            </div>
+                        )}
                     </div>
                 </CardHeader>
                     <CardContent className="space-y-3 text-sm">

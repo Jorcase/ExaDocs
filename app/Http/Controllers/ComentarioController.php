@@ -9,15 +9,69 @@ use App\Models\Archivo;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ComentarioNuevoMail;
+use Illuminate\Http\Request;
+use App\Services\NotificacionService;
+use Illuminate\Support\Facades\Auth;
 
 class ComentarioController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $sort = $request->input('sort', 'id');
+        $direction = $request->input('direction', 'desc') === 'asc' ? 'asc' : 'desc';
+        $search = $request->input('search');
+        $autor = $request->input('autor');
+        $destacadoInput = $request->input('destacado');
+        $destacado = null;
+        if ($destacadoInput !== null && $destacadoInput !== '') {
+            $destacado = filter_var($destacadoInput, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        }
+
+        $table = (new Comentario())->getTable();
+
+        $allowedSorts = [
+            'id' => "{$table}.id",
+            'archivo' => 'archivos.titulo',
+            'autor' => 'autores.name',
+            'destacado' => "{$table}.destacado",
+        ];
+
+        $query = Comentario::query()
+            ->from("{$table}")
+            ->select("{$table}.*")
+            ->leftJoin('archivos', 'archivos.id', '=', "{$table}.archivo_id")
+            ->leftJoin('users as autores', 'autores.id', '=', "{$table}.user_id")
+            ->with(['archivo:id,titulo', 'autor:id,name']);
+
+        if ($search) {
+            $query->where(function ($q) use ($search, $table) {
+                $q->where('archivos.titulo', 'like', '%' . $search . '%')
+                    ->orWhere('autores.name', 'like', '%' . $search . '%')
+                    ->orWhere("{$table}.cuerpo", 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($autor) {
+            $query->where('autores.name', 'like', '%' . $autor . '%');
+        }
+
+        if (!is_null($destacado)) {
+            $query->where("{$table}.destacado", $destacado);
+        }
+
+        $orderColumn = $allowedSorts[$sort] ?? "{$table}.id";
+        $query->orderBy($orderColumn, $direction);
+
         return inertia('comentarios/index', [
-            'comentarios' => Comentario::with(['archivo:id,titulo', 'autor:id,name'])
-                ->latest()
-                ->paginate(10),
+            'comentarios' => $query->paginate(10)->withQueryString(),
+            'filters' => [
+                'search' => $search,
+                'autor' => $autor,
+                'destacado' => $destacado,
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
+            'autores' => User::select('name')->orderBy('name')->pluck('name'),
         ]);
     }
 
@@ -35,9 +89,22 @@ class ComentarioController extends Controller
         $comentario = Comentario::create($request->validated());
 
         $autorArchivo = $comentario->archivo?->autor;
-        if ($autorArchivo && $autorArchivo->email) {
+        if (config('mail.notifications_enabled') && $autorArchivo && $autorArchivo->email) {
             Mail::to($autorArchivo->email)->send(new ComentarioNuevoMail($comentario));
         }
+
+        // Notificación in-app para autor del archivo
+        NotificacionService::crearParaAutorArchivo($autorArchivo, [
+            'actor_id' => Auth::id(),
+            'archivo_id' => $comentario->archivo_id,
+            'tipo' => 'comentario',
+            'titulo' => 'Nuevo comentario en tu archivo',
+            'mensaje' => $comentario->archivo?->titulo ?? '',
+            'data' => [
+                'comentario_id' => $comentario->id,
+                'autor' => $comentario->autor?->name,
+            ],
+        ]);
 
         return redirect()->route('comentarios.index')
             ->with('success', "Comentario #{$comentario->id} creado.");

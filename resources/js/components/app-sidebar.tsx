@@ -28,42 +28,46 @@ import {
     Star,
     Users,
     Wand2,
+    Search,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 import { useEffect } from 'react';
+import { Input } from './ui/input';
+import { AlertBell } from './alert-bell';
+
+const topItems: NavItem[] = [
+    { title: 'Home', href: dashboard(), icon: LayoutGrid },
+    { title: 'Archivos', href: '/archivos', icon: BookOpen },
+    { title: 'Mis cosas', href: '/mis-cosas', icon: Layers },
+    { title: 'Perfil', href: '/perfil', icon: Users },
+];
 
 const mainNavGroups = [
     {
-        title: 'Operación',
-        items: [
-            { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
-            { title: 'Archivos', href: '/archivos', icon: BookOpen },
-        ] satisfies NavItem[],
-    },
-    {
         title: 'Catálogos',
         items: [
-            { title: 'Carrera', href: '/carrera', icon: Building },
-            { title: 'Materia', href: '/materia', icon: BookOpen },
-            { title: 'Plan Estudio', href: '/planes-estudio', icon: Layers },
-            { title: 'Perfiles', href: '/perfiles', icon: Users },
-            { title: 'Tipo Carrera', href: '/tipo-carreras', icon: Award },
-            { title: 'Tipo Archivo', href: '/tipo-archivos', icon: FileSignature },
-            { title: 'Estado Archivo', href: '/estado-archivos', icon: FileCheck },
+            { title: 'Carrera', href: '/carrera', icon: Building, permission: 'view_catalogos' },
+            { title: 'Materia', href: '/materia', icon: BookOpen, permission: 'view_catalogos' },
+            { title: 'Plan Estudio', href: '/planes-estudio', icon: Layers, permission: 'view_catalogos' },
+            { title: 'Perfiles', href: '/perfiles', icon: Users, permission: 'view_catalogos' },
+            { title: 'Tipo Archivo', href: '/tipo-archivos', icon: FileSignature, permission: 'view_catalogos' },
+            { title: 'Tipo Carrera', href: '/tipo-carreras', icon: Award, permission: 'view_tipocarrera' },
+            { title: 'Estado Archivo', href: '/estado-archivos', icon: FileCheck, permission: 'view_estadoarchivo' },
 
         ] satisfies NavItem[],
     },
             {
-                title: 'Moderación',
-                items: [
-                    { title: 'Historial revisiones', href: '/historial-revisiones', icon: Wand2 },
-                    { title: 'Reportes', href: '/reportes', icon: ShieldCheck },
-                    { title: 'Comentarios', href: '/comentarios', icon: ClipboardList },
-                    { title: 'Valoraciones', href: '/valoraciones', icon: Star },
-                    { title: 'Roles', href: '/roles', icon: ShieldCheck },
-                    { title: 'Permisos', href: '/permissions', icon: ClipboardList },
-                ] satisfies NavItem[],
-            },
+        title: 'Moderación',
+        items: [
+            { title: 'Historial revisiones', href: '/historial-revisiones', icon: Wand2 ,permission: 'view_moderacion'},
+            { title: 'Reportes', href: '/reportes', icon: ShieldCheck ,permission: 'view_moderacion'},
+            { title: 'Comentarios', href: '/comentarios', icon: ClipboardList ,permission: 'view_moderacion'},
+            { title: 'Valoraciones', href: '/valoraciones', icon: Star ,permission: 'view_moderacion'},
+            { title: 'Permisos', href: '/permissions', icon: ClipboardList ,permission: 'view_permisos'},
+            { title: 'Roles', href: '/roles', icon: ShieldCheck ,permission: 'view_roles'},
+            { title: 'Usuarios', href: '/users', icon: Users ,permission: 'view_usuarios'},
+        ] satisfies NavItem[],
+    },
 ];
 
 const footerNavItems: NavItem[] = [
@@ -97,19 +101,34 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
+                <div className="flex items-center justify-between px-2">
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton size="lg" asChild>
+                                <Link href={dashboard()} prefetch preserveScroll>
+                                    <AppLogo />
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                    <AlertBell />
+                </div>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch preserveScroll>
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
+                        <div className="relative px-1">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar..."
+                                className="h-9 pl-9 text-sm"
+                                aria-label="Buscar"
+                            />
+                        </div>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain groups={mainNavGroups} />
+                <NavMain items={topItems} groups={mainNavGroups} />
             </SidebarContent>
 
             <SidebarFooter>

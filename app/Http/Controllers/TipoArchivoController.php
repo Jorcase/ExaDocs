@@ -5,13 +5,27 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreTipoArchivoRequest;
 use App\Http\Requests\UpdateTipoArchivoRequest;
 use App\Models\TipoArchivo;
+use Illuminate\Http\Request;
 
 class TipoArchivoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $sort = $request->input('sort', 'id');
+        $direction = $request->input('direction', 'desc');
+
+        $allowedSorts = ['id', 'nombre'];
+        if (!in_array($sort, $allowedSorts, true)) {
+            $sort = 'id';
+        }
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
+
         return inertia('tipo-archivos/index', [
-            'tipos' => TipoArchivo::latest()->paginate(10),
+            'tipos' => TipoArchivo::orderBy($sort, $direction)->paginate(10)->withQueryString(),
+            'filters' => [
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
         ]);
     }
 

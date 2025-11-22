@@ -8,16 +8,44 @@ use App\Models\Materia;
 use App\Models\Carrera;
 use App\Models\Plan_Estudio;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\MateriasExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
 
 class MateriaController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $table = (new Materia())->getTable();
+        $search = $request->string('search');
+        $codigo = $request->string('codigo');
+        $tipos = $request->input('tipo', []);
+        $carreraId = $request->input('carrera_id');
+        $sort = $request->input('sort', 'id');
+        $direction = $request->input('direction', 'desc');
+
+        $query = $this->buildFilteredQuery($request);
+
+        [$sort, $direction] = $this->normalizeSort($sort, $direction);
+        $query->orderBy("{$table}.{$sort}", $direction);
+
         return inertia('materias/index', [
-            'materias' => Materia::latest()->paginate(10),
+            'materias' => $query->paginate(10)->withQueryString(),
+            'filters' => [
+                'search' => $search->value(),
+                'codigo' => $codigo->value(),
+                'tipo' => is_array($tipos) ? $tipos : [],
+                'carrera_id' => $carreraId,
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
+            'codigos' => Materia::select('codigo')->distinct()->pluck('codigo')->filter()->values(),
+            'carreras' => Carrera::select('id', 'nombre')->orderBy('nombre')->get(),
         ]);
     }
 
@@ -110,13 +138,6 @@ class MateriaController extends Controller
             ->with('success', "Materia {$materia->nombre} eliminada correctamente.");
     }
 
-    public function generateReport()
-    {
-        $materias = Materia::with(['carreras:id,nombre', 'planesEstudio:id,nombre'])->orderBy('nombre')->get();
-        $pdf = Pdf::loadView('pdf.materias', compact('materias'));
-        return $pdf->stream('materias.pdf');
-    }
-
     private function validarPlanesPorCarrera($asignaciones): void
     {
         foreach ($asignaciones as $asig) {
@@ -148,5 +169,75 @@ class MateriaController extends Controller
         ])->all();
 
         $materia->planesEstudio()->sync($planData);
+    }
+    public function exportMaterias()
+    {
+        $request = request();
+        $table = (new Materia())->getTable();
+        $sort = $request->input('sort', 'id');
+        $direction = $request->input('direction', 'desc');
+        [$sort, $direction] = $this->normalizeSort($sort, $direction);
+
+        $query = $this->buildFilteredQuery($request);
+        $query->orderBy("{$table}.{$sort}", $direction);
+
+        $materias = $query->get();
+
+        return Excel::download(new MateriasExport($materias), 'materias.xlsx');
+    }
+
+    public function generateReport(Request $request)
+    {
+        $table = (new Materia())->getTable();
+        $sort = $request->input('sort', 'id');
+        $direction = $request->input('direction', 'desc');
+        [$sort, $direction] = $this->normalizeSort($sort, $direction);
+
+        $query = $this->buildFilteredQuery($request)
+            ->with(['carreras:id,nombre', 'planesEstudio:id,nombre']);
+        $query->orderBy("{$table}.{$sort}", $direction);
+
+        $materias = $query->get();
+        $pdf = Pdf::loadView('pdf.materias', compact('materias'));
+        return $pdf->stream('materias.pdf');
+    }
+
+    private function buildFilteredQuery(Request $request): Builder
+    {
+        $search = $request->string('search');
+        $codigo = $request->string('codigo');
+        $tipos = $request->input('tipo', []);
+        $carreraId = $request->input('carrera_id');
+
+        $query = Materia::query();
+
+        if ($search->isNotEmpty()) {
+            $query->where('nombre', 'like', '%' . $search . '%');
+        }
+
+        if ($codigo->isNotEmpty()) {
+            $query->where('codigo', 'like', '%' . $codigo . '%');
+        }
+
+        if (is_array($tipos) && count($tipos)) {
+            $query->whereIn('tipo', $tipos);
+        }
+
+        if ($carreraId) {
+            $query->whereHas('carreras', fn ($q) => $q->where('carreras.id', (int) $carreraId));
+        }
+
+        return $query;
+    }
+
+    private function normalizeSort(string $sort, string $direction): array
+    {
+        $allowedSorts = ['id', 'nombre', 'codigo', 'tipo'];
+        if (!in_array($sort, $allowedSorts, true)) {
+            $sort = 'id';
+        }
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
+
+        return [$sort, $direction];
     }
 }

@@ -9,15 +9,65 @@ use App\Models\Archivo;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ValoracionNuevaMail;
+use Illuminate\Http\Request;
+use App\Services\NotificacionService;
+use Illuminate\Support\Facades\Auth;
 
 class ValoracionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $sort = $request->input('sort', 'id');
+        $direction = $request->input('direction', 'desc') === 'asc' ? 'asc' : 'desc';
+        $search = $request->input('search');
+        $autor = $request->input('autor');
+        $puntajes = (array) $request->input('puntaje', []);
+
+        $table = (new Valoracion())->getTable();
+
+        $allowedSorts = [
+            'id' => "{$table}.id",
+            'archivo' => 'archivos.titulo',
+            'autor' => 'autores.name',
+            'puntaje' => "{$table}.puntaje",
+        ];
+
+        $query = Valoracion::query()
+            ->from("{$table}")
+            ->select("{$table}.*")
+            ->leftJoin('archivos', 'archivos.id', '=', "{$table}.archivo_id")
+            ->leftJoin('users as autores', 'autores.id', '=', "{$table}.user_id")
+            ->with(['archivo:id,titulo', 'autor:id,name']);
+
+        if ($search) {
+            $query->where(function ($q) use ($search, $table) {
+                $q->where('archivos.titulo', 'like', '%' . $search . '%')
+                    ->orWhere('autores.name', 'like', '%' . $search . '%')
+                    ->orWhere("{$table}.comentario", 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($autor) {
+            $query->where('autores.name', 'like', '%' . $autor . '%');
+        }
+
+        if (!empty($puntajes)) {
+            $query->whereIn("{$table}.puntaje", $puntajes);
+        }
+
+        $orderColumn = $allowedSorts[$sort] ?? "{$table}.id";
+        $query->orderBy($orderColumn, $direction);
+
         return inertia('valoraciones/index', [
-            'valoraciones' => Valoracion::with(['archivo:id,titulo', 'autor:id,name'])
-                ->latest()
-                ->paginate(10),
+            'valoraciones' => $query->paginate(10)->withQueryString(),
+            'filters' => [
+                'search' => $search,
+                'autor' => $autor,
+                'puntaje' => $puntajes,
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
+            'autores' => User::select('name')->orderBy('name')->pluck('name'),
         ]);
     }
 
@@ -35,9 +85,22 @@ class ValoracionController extends Controller
         $valoracion = Valoracion::create($request->validated());
 
         $autorArchivo = $valoracion->archivo?->autor;
-        if ($autorArchivo && $autorArchivo->email) {
+        if (config('mail.notifications_enabled') && $autorArchivo && $autorArchivo->email) {
             Mail::to($autorArchivo->email)->send(new ValoracionNuevaMail($valoracion));
         }
+
+        // Notificación in-app para autor del archivo
+        NotificacionService::crearParaAutorArchivo($autorArchivo, [
+            'actor_id' => Auth::id(),
+            'archivo_id' => $valoracion->archivo_id,
+            'tipo' => 'valoracion',
+            'titulo' => 'Tu archivo fue valorado',
+            'mensaje' => $valoracion->archivo?->titulo ?? '',
+            'data' => [
+                'puntaje' => $valoracion->puntaje,
+                'autor' => $valoracion->autor?->name,
+            ],
+        ]);
 
         return redirect()->route('valoraciones.index')
             ->with('success', "Valoración #{$valoracion->id} creada.");

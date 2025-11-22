@@ -115,4 +115,16 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | App notifications toggle
+    |--------------------------------------------------------------------------
+    |
+    | Permite apagar el envío de correos de la aplicación sin tocar el código.
+    | Útil para cargas masivas o entornos locales.
+    |
+    */
+
+    'notifications_enabled' => env('MAIL_NOTIFICATIONS_ENABLED', false),
+
 ];

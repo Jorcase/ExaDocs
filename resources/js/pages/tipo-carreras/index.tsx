@@ -13,8 +13,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import Pagination from '@/components/pagination';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { route } from 'ziggy-js';
+import { ListSection } from '@/components/list-section';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -41,19 +42,15 @@ export default function Index({ tipos }: { tipos: TiposPaginated }) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Tipos de carrera | Listado" />
             <div className="m-4 space-y-4">
-                <Card>
-                    <CardContent className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                            <CardTitle className="text-lg font-semibold">Tipos de carrera</CardTitle>
-                            <p className="text-sm text-muted-foreground">Lista general de los tipos habilitados</p>
-                        </div>
-                        <div className="flex gap-2">
-                            <Link href={route('tipo-carreras.create')}>
-                                <Button>Crear tipo</Button>
-                            </Link>
-                        </div>
-                    </CardContent>
-                </Card>
+                <ListSection
+                    title="Tipos de carrera"
+                    description="Lista general de los tipos habilitados"
+                    actions={
+                        <Link href={route('tipo-carreras.create')}>
+                            <Button>Crear tipo</Button>
+                        </Link>
+                    }
+                />
 
                 <Card>
                     <CardContent className="space-y-4">

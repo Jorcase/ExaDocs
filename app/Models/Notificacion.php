@@ -13,7 +13,11 @@ class Notificacion extends Model
 
     protected $fillable = [
         'user_id',
+        'actor_id',
+        'archivo_id',
         'tipo',
+        'titulo',
+        'mensaje',
         'data',
         'leido_en',
     ];
@@ -26,5 +30,15 @@ class Notificacion extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function actor()
+    {
+        return $this->belongsTo(User::class, 'actor_id');
+    }
+
+    public function archivo()
+    {
+        return $this->belongsTo(Archivo::class);
     }
 }
