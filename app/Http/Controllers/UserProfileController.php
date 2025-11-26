@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateUserProfileRequest;
 use App\Models\UserProfile;
 use App\Models\User;
 use App\Models\Carrera;
+use App\Models\Archivo;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
@@ -58,9 +59,16 @@ class UserProfileController extends Controller
 
         if ($request->hasFile('avatar')) {
             $data['avatar_path'] = $request->file('avatar')->store('avatars', 'public');
+            unset($data['avatar']);
         }
 
+        $this->marcarPerfilCompleto($perfil = new UserProfile($data));
+
         $perfil = UserProfile::create($data);
+
+        if ($perfil->user && !$perfil->user->hasRole('Estudiante') && $perfil->perfil_completo) {
+            $perfil->user->assignRole('Estudiante');
+        }
 
         return redirect()->route('perfiles.index')
             ->with('success', "Perfil de {$perfil->user->name} creado.");
@@ -68,6 +76,10 @@ class UserProfileController extends Controller
 
     public function edit(UserProfile $perfile)
     {
+        $this->authorize('update', $perfile);
+
+        $perfile->load('user');
+
         return inertia('perfiles/edit', [
             'perfil' => $perfile,
             'usuarios' => User::select('id', 'name', 'email')->orderBy('name')->get(),
@@ -77,6 +89,12 @@ class UserProfileController extends Controller
 
     public function update(UpdateUserProfileRequest $request, UserProfile $perfile)
     {
+        $this->authorize('update', $perfile);
+
+        $request->merge([
+            'user_id' => $perfile->user_id,
+            'carrera_principal_id' => $request->input('carrera_principal_id') ?: null,
+        ]);
         $data = $request->validated();
 
         if ($request->hasFile('avatar')) {
@@ -84,16 +102,143 @@ class UserProfileController extends Controller
                 Storage::disk('public')->delete($perfile->avatar_path);
             }
             $data['avatar_path'] = $request->file('avatar')->store('avatars', 'public');
+            unset($data['avatar']);
+        } else {
+            unset($data['avatar']);
         }
 
+        $this->marcarPerfilCompleto($perfile, $data);
+
         $perfile->update($data);
+
+        if ($perfile->user && !$perfile->user->hasRole('Estudiante') && $perfile->perfil_completo) {
+            $perfile->user->assignRole('Estudiante');
+        }
 
         return redirect()->route('perfiles.index')
             ->with('success', "Perfil de {$perfile->user->name} actualizado.");
     }
 
+    public function show(UserProfile $perfile)
+    {
+        $perfile->load(['user', 'carrera']);
+        $archivos = Archivo::with([
+            'materia:id,nombre',
+            'tipo:id,nombre',
+            'estado:id,nombre',
+        ])
+            ->where('user_id', $perfile->user_id)
+            ->orderByDesc('publicado_en')
+            ->orderByDesc('id')
+            ->paginate(6, ['id', 'user_id', 'materia_id', 'tipo_archivo_id', 'estado_archivo_id', 'titulo', 'publicado_en'])
+            ->withQueryString();
+
+        return inertia('perfiles/show', [
+            'perfil' => $perfile,
+            'archivos' => $archivos,
+        ]);
+    }
+
+    public function showPublic(UserProfile $perfile)
+    {
+        $perfile->load(['user', 'carrera']);
+        $archivos = Archivo::with([
+            'materia:id,nombre',
+            'tipo:id,nombre',
+            'estado:id,nombre',
+        ])
+            ->where('user_id', $perfile->user_id)
+            ->orderByDesc('publicado_en')
+            ->orderByDesc('id')
+            ->paginate(6, ['id', 'user_id', 'materia_id', 'tipo_archivo_id', 'estado_archivo_id', 'titulo', 'publicado_en'])
+            ->withQueryString();
+
+        return inertia('perfiles/show', [
+            'perfil' => $perfile,
+            'archivos' => $archivos,
+        ]);
+    }
+
+    public function showProfile()
+    {
+        $user = auth()->user();
+        $perfil = UserProfile::firstOrCreate(
+            ['user_id' => $user->id],
+            ['perfil_completo' => false]
+        );
+        $perfil->load(['user', 'carrera']);
+        $archivos = Archivo::with([
+            'materia:id,nombre',
+            'tipo:id,nombre',
+            'estado:id,nombre',
+        ])
+            ->where('user_id', $perfil->user_id)
+            ->orderByDesc('publicado_en')
+            ->orderByDesc('id')
+            ->paginate(6, ['id', 'user_id', 'materia_id', 'tipo_archivo_id', 'estado_archivo_id', 'titulo', 'publicado_en'])
+            ->withQueryString();
+
+        return inertia('perfiles/show', [
+            'perfil' => $perfil,
+            'archivos' => $archivos,
+        ]);
+    }
+
+    public function editProfile()
+    {
+        $user = auth()->user();
+        $perfil = UserProfile::firstOrCreate(
+            ['user_id' => $user->id],
+            ['perfil_completo' => false]
+        );
+
+        $this->authorize('update', $perfil);
+
+        return inertia('perfiles/edit-self', [
+            'perfil' => $perfil,
+            'carreras' => Carrera::select('id', 'nombre')->orderBy('nombre')->get(),
+        ]);
+    }
+
+    public function updateProfile(UpdateUserProfileRequest $request)
+    {
+        $user = auth()->user();
+        $perfil = UserProfile::firstOrCreate(
+            ['user_id' => $user->id],
+            ['perfil_completo' => false]
+        );
+        $this->authorize('update', $perfil);
+
+        $request->merge([
+            'user_id' => $perfil->user_id,
+            'carrera_principal_id' => $request->input('carrera_principal_id') ?: null,
+        ]);
+        $data = $request->validated();
+
+        if ($request->hasFile('avatar')) {
+            if ($perfil->avatar_path) {
+                Storage::disk('public')->delete($perfil->avatar_path);
+            }
+            $data['avatar_path'] = $request->file('avatar')->store('avatars', 'public');
+            unset($data['avatar']);
+        } else {
+            unset($data['avatar']);
+        }
+
+        $this->marcarPerfilCompleto($perfil, $data);
+        $perfil->update($data);
+
+        if ($perfil->user && !$perfil->user->hasRole('Estudiante') && $perfil->perfil_completo) {
+            $perfil->user->assignRole('Estudiante');
+        }
+
+        return redirect()->route('perfil.show')->with('success', 'Perfil actualizado.');
+    }
+
     public function destroy(UserProfile $perfile)
     {
+        $this->authorize('delete', $perfile);
+
         $perfile->delete();
 
         return redirect()->route('perfiles.index')
@@ -172,6 +317,20 @@ class UserProfileController extends Controller
                 ->select("{$table}.*");
         } else {
             $query->orderBy("{$table}.{$sort}", $direction);
+        }
+    }
+
+    private function marcarPerfilCompleto(UserProfile $perfil, ?array $data = null): void
+    {
+        $payload = $data ?? $perfil->getAttributes();
+        $completo = !empty($payload['nombre_completo'])
+            && !empty($payload['documento'])
+            && !empty($payload['telefono'])
+            && !empty($payload['carrera_principal_id']);
+
+        if ($completo) {
+            $perfil->perfil_completo = true;
+            $perfil->perfil_completado_en = now();
         }
     }
 }

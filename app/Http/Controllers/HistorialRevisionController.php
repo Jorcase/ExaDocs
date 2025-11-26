@@ -83,8 +83,12 @@ class HistorialRevisionController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $archivoId = $request->input('archivo_id');
+        $estadoArchivoId = $request->input('estado_archivo_id');
+        $archivoSeleccionado = $archivoId ? Archivo::with('estado:id,nombre')->find($archivoId) : null;
+
         return inertia('historial-revisiones/create', [
             'revision' => new HistorialRevision(),
             'archivos' => Archivo::with('estado:id,nombre')
@@ -93,6 +97,11 @@ class HistorialRevisionController extends Controller
                 ->get(),
             'usuarios' => User::select('id', 'name')->orderBy('name')->get(),
             'estados' => EstadoArchivo::select('id', 'nombre')->orderBy('nombre')->get(),
+            'prefill' => [
+                'archivo_id' => $archivoSeleccionado?->id,
+                'estado_previo' => $archivoSeleccionado?->estado?->nombre,
+                'estado_nuevo_id' => $estadoArchivoId ?: $archivoSeleccionado?->estado_archivo_id,
+            ],
         ]);
     }
 

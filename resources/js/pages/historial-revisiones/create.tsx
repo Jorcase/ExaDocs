@@ -11,9 +11,10 @@ import {
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import { route } from 'ziggy-js';
-import { type FormEvent } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
+import { type SharedData } from '@/types';
 
 interface Option {
   id: number;
@@ -27,28 +28,55 @@ interface ArchivoOption extends Option {
   estado?: { nombre: string } | null;
 }
 
+interface PageProps extends SharedData {
+  auth: { user: { id: number; name: string } };
+}
+
 export default function Create({
   archivos,
   usuarios,
   estados,
+  prefill,
 }: {
   archivos: ArchivoOption[];
   usuarios: Option[];
   estados: Option[];
+  prefill?: {
+    archivo_id?: number | null;
+    estado_previo?: string | null;
+    estado_nuevo_id?: number | null;
+  };
 }) {
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Historial de revisiones', href: route('historial-revisiones.index') },
     { title: 'Registrar', href: route('historial-revisiones.create') },
   ];
 
+  const initialArchivoId = prefill?.archivo_id ?? '';
+  const archivoInicial = initialArchivoId ? archivos.find((a) => a.id === initialArchivoId) : null;
+  const initialEstadoPrevio = prefill?.estado_previo ?? archivoInicial?.estado?.nombre ?? '';
+  const initialEstadoNuevoId = prefill?.estado_nuevo_id ?? archivoInicial?.estado_archivo_id ?? '';
+  const initialEstadoNuevoNombre =
+    initialEstadoNuevoId !== '' ? estados.find((e) => e.id === initialEstadoNuevoId)?.nombre ?? '' : '';
+  const { auth } = usePage<PageProps>().props;
+  const [archivoSearch, setArchivoSearch] = useState('');
+
   const { data, setData, post, processing, errors } = useForm({
-    archivo_id: '' as number | '',
-    revisor_id: '' as number | '',
-    estado_previo: '',
-    estado_nuevo: '',
-    estado_nuevo_id: '' as number | '',
+    archivo_id: initialArchivoId as number | '',
+    revisor_id: auth?.user?.id ?? ('' as number | ''),
+    estado_previo: initialEstadoPrevio,
+    estado_nuevo: initialEstadoNuevoNombre,
+    estado_nuevo_id: initialEstadoNuevoId as number | '',
     comentario: '',
   });
+
+  const archivosFiltrados = useMemo(() => {
+    const term = archivoSearch.trim().toLowerCase();
+    if (!term) return archivos;
+    return archivos.filter((a) =>
+      (a.titulo ?? a.title ?? '').toLowerCase().includes(term)
+    );
+  }, [archivoSearch, archivos]);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -84,13 +112,45 @@ export default function Create({
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Registrar revisión" />
-      <div className="w-full max-w-2xl p-4 space-y-4">
+      <div className="flex justify-center px-4 py-6">
+        <div className="w-full max-w-2xl space-y-4 rounded-2xl border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-6 shadow-lg backdrop-blur-sm dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
         <form onSubmit={handleSubmit} className="space-y-4">
-          {renderSelect('Archivo', data.archivo_id, (val) => {
-            setData('archivo_id', val);
-            const archivo = archivos.find((a) => a.id === val);
-            setData('estado_previo', archivo?.estado?.nombre ?? '');
-          }, archivos, errors.archivo_id)}
+          <div className="space-y-1.5">
+            <Label>Archivo</Label>
+            <Select
+              value={data.archivo_id === '' ? '' : String(data.archivo_id)}
+              onValueChange={(v) => {
+                const val = Number(v);
+                setData('archivo_id', val);
+                const archivo = archivos.find((a) => a.id === val);
+                setData('estado_previo', archivo?.estado?.nombre ?? '');
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccioná un archivo" />
+              </SelectTrigger>
+              <SelectContent>
+                <div className="p-2">
+                  <Input
+                    placeholder="Buscar archivo..."
+                    className="h-8 text-sm"
+                    value={archivoSearch}
+                    onChange={(e) => setArchivoSearch(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
+                </div>
+                {archivosFiltrados.map((opt) => (
+                  <SelectItem key={opt.id} value={String(opt.id)}>
+                    {opt.titulo ?? opt.title ?? opt.name ?? opt.id}
+                  </SelectItem>
+                ))}
+                {archivosFiltrados.length === 0 && (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</div>
+                )}
+              </SelectContent>
+            </Select>
+            {errors.archivo_id && <p className="text-sm text-destructive">{errors.archivo_id}</p>}
+          </div>
           {renderSelect('Revisor', data.revisor_id, (val) => setData('revisor_id', val), usuarios, errors.revisor_id)}
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -143,6 +203,7 @@ export default function Create({
             Guardar
           </Button>
         </form>
+        </div>
       </div>
     </AppLayout>
   );

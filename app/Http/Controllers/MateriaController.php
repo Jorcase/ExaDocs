@@ -178,7 +178,8 @@ class MateriaController extends Controller
         $direction = $request->input('direction', 'desc');
         [$sort, $direction] = $this->normalizeSort($sort, $direction);
 
-        $query = $this->buildFilteredQuery($request);
+        $query = $this->buildFilteredQuery($request)
+            ->with(['carreras:id,nombre', 'planesEstudio:id,nombre']);
         $query->orderBy("{$table}.{$sort}", $direction);
 
         $materias = $query->get();

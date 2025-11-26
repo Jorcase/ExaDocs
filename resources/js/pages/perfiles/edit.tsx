@@ -13,7 +13,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
-import { type FormEvent } from 'react';
+import { type FormEvent, useEffect } from 'react';
 
 interface Option {
   id: number;
@@ -25,6 +25,7 @@ interface Option {
 interface Perfil {
   id: number;
   user_id: number;
+  user?: { id: number; name: string; email: string };
   documento?: string | null;
   carrera_principal_id?: number | null;
   telefono?: string | null;
@@ -47,8 +48,10 @@ export default function Edit({
     { title: `Editar #${perfil.id}`, href: route('perfiles.edit', perfil.id) },
   ];
 
-  const { data, setData, put, processing, errors } = useForm({
+  const { data, setData, post, processing, errors } = useForm({
+    _method: 'put',
     user_id: perfil.user_id,
+    nombre_completo: perfil.nombre_completo ?? '',
     documento: perfil.documento ?? '',
     carrera_principal_id: perfil.carrera_principal_id ?? '',
     telefono: perfil.telefono ?? '',
@@ -56,15 +59,14 @@ export default function Edit({
     bio: perfil.bio ?? '',
   });
 
+  useEffect(() => {
+    setData('user_id', perfil.user_id);
+  }, [perfil.user_id, setData]);
+
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = { ...data } as Record<string, any>;
-    if (!formData.avatar) {
-      delete formData.avatar;
-    }
-    put(route('perfiles.update', perfil.id), {
+    post(route('perfiles.update', perfil.id), {
       forceFormData: true,
-      data: formData,
     });
   };
 
@@ -97,9 +99,32 @@ export default function Edit({
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title={`Editar perfil #${perfil.id}`} />
-      <div className="w-full max-w-2xl p-4 space-y-4">
+      <div className="flex justify-center px-4 py-6">
+        <div className="w-full max-w-2xl space-y-4 rounded-2xl border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 shadow-lg backdrop-blur-sm dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
         <form onSubmit={handleSubmit} className="space-y-4">
-          {renderSelect('Usuario', data.user_id, (val) => setData('user_id', val), usuarios, errors.user_id)}
+          <input type="hidden" name="user_id" value={data.user_id} />
+          <div className="space-y-1.5">
+            <Label>Usuario</Label>
+            <Input
+              value={
+                usuarios.find((u) => u.id === perfil.user_id)?.name ??
+                usuarios.find((u) => u.id === perfil.user_id)?.email ??
+                `ID ${perfil.user_id}`
+              }
+              disabled
+            />
+            {errors.user_id && <p className="text-sm text-destructive">{errors.user_id}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="nombre_completo">Nombre completo</Label>
+            <Input
+              id="nombre_completo"
+              value={data.nombre_completo}
+              onChange={(e) => setData('nombre_completo', e.target.value)}
+              placeholder="Tu nombre completo"
+            />
+            {errors.nombre_completo && <p className="text-sm text-destructive">{errors.nombre_completo}</p>}
+          </div>
           {renderSelect(
             'Carrera principal',
             data.carrera_principal_id,
@@ -160,6 +185,7 @@ export default function Edit({
             Guardar cambios
           </Button>
         </form>
+        </div>
       </div>
     </AppLayout>
   );

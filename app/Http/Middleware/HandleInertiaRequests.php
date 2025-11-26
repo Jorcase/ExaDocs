@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Models\Notificacion;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -37,6 +38,20 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
+        $user = $request->user();
+        $canNotifPersonal = $user && $user->can('view_notifipersonal');
+
+        $notifItems = collect();
+        $notifUnread = 0;
+        if ($canNotifPersonal) {
+            $notifItems = Notificacion::where('user_id', $user->id)
+                ->latest()
+                ->take(5)
+                ->get(['id', 'titulo', 'mensaje', 'leido_en', 'created_at']);
+            $notifUnread = Notificacion::where('user_id', $user->id)
+                ->whereNull('leido_en')
+                ->count();
+        }
 
         return [
             ...parent::share($request),
@@ -48,6 +63,10 @@ class HandleInertiaRequests extends Middleware
                 $request->user()->getAllPermissions()->pluck('name') : []   
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'notifications' => $canNotifPersonal ? [
+                'items' => $notifItems,
+                'total_unread' => $notifUnread,
+            ] : null,
         ];
     }
 }

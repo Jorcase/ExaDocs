@@ -15,6 +15,7 @@ class StoreUserProfileRequest extends FormRequest
     {
         return [
             'user_id' => ['required', 'exists:users,id', 'unique:user_profiles,user_id'],
+            'nombre_completo' => ['nullable', 'string', 'max:255'],
             'documento' => ['nullable', 'string', 'max:20'],
             'carrera_principal_id' => ['nullable', 'exists:carreras,id'],
             'telefono' => ['nullable', 'string', 'max:30'],

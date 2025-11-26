@@ -12,31 +12,41 @@ use App\Models\EstadoArchivo;
 use App\Models\Plan_Estudio;
 use App\Models\Carrera;
 use App\Models\User;
+use App\Models\TipoCarrera;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ArchivoCreadoMail;
-use Illuminate\Support\Facades\Gate;
+use App\Mail\ArchivoActualizadoMail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\ArchivosExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
+use App\Services\NotificacionService;
 
 
 class ArchivoController extends Controller
 {
     public function index(Request $request)
     {
-        $sort = $request->input('sort', 'date') === 'title' ? 'title' : 'date';
+        $sortParam = $request->input('sort', 'date');
+        $sort = in_array($sortParam, ['title', 'popular'], true) ? $sortParam : 'date';
         $direction = $request->input('direction', 'desc') === 'asc' ? 'asc' : 'desc';
+        $user = $request->user();
+        $userId = $user?->id;
+        $canViewAllEstados = $user && ($user->can('state_archivo') || $user->can('view_moderacion'));
+        $estadoAprobadoId = $this->estadoAprobadoId();
 
         $query = $this->buildFilteredQuery($request);
 
         $archivos = $query
             ->when($sort === 'title', fn($q) => $q->orderBy('titulo', $direction))
-            ->when($sort !== 'title', fn($q) => $q->orderBy('created_at', $direction))
+            ->when($sort === 'popular', fn($q) => $q->orderBy('visitas_count', $direction))
+            ->when($sort === 'date', fn($q) => $q->orderBy('created_at', $direction))
             ->paginate(9)
             ->through(function ($archivo) use ($request) {
                 $auth = $request->user();
@@ -52,6 +62,7 @@ class ArchivoController extends Controller
             'filters' => [
                 'search' => $request->input('search'),
                 'autor' => $request->input('autor'),
+                'tipo_carrera_id' => $request->input('tipo_carrera_id'),
                 'carrera_id' => $request->input('carrera_id'),
                 'materia_id' => $request->input('materia_id'),
                 'tipo_archivo_id' => $request->input('tipo_archivo_id'),
@@ -62,8 +73,23 @@ class ArchivoController extends Controller
                 'page' => (int) $request->input('page', 1),
             ],
             'autores' => User::select('name')->orderBy('name')->pluck('name'),
-            'carreras' => Carrera::select('id', 'nombre')->orderBy('nombre')->get(),
-            'materias' => Materia::select('id', 'nombre')->orderBy('nombre')->get(),
+            'tipoCarreras' => TipoCarrera::select('id', 'nombre')->orderBy('nombre')->get(),
+            'carreras' => Carrera::select('id', 'nombre', 'tipo_carrera_id')->orderBy('nombre')->get(),
+            'materias' => Materia::with([
+                'carreras:id',
+                'planesEstudio:id',
+            ])
+                ->select('id', 'nombre')
+                ->orderBy('nombre')
+                ->get()
+                ->map(function ($materia) {
+                    return [
+                        'id' => $materia->id,
+                        'nombre' => $materia->nombre,
+                        'carrera_ids' => $materia->carreras->pluck('id'),
+                        'plan_ids' => $materia->planesEstudio->pluck('id'),
+                    ];
+                }),
             'tipos' => TipoArchivo::select('id', 'nombre')->orderBy('nombre')->get(),
             'planes' => Plan_Estudio::select('id', 'nombre', 'carrera_id')->orderBy('nombre')->get(),
             'estados' => EstadoArchivo::select('id', 'nombre')->orderBy('nombre')->get(),
@@ -72,6 +98,10 @@ class ArchivoController extends Controller
 
     public function create()
     {
+        $user = auth()->user();
+        $canSetEstado = $user && $user->can('state_archivo');
+        $estadoPendienteId = $this->estadoPendienteId();
+
         return inertia('archivos/create', [
             'archivo' => new Archivo(),
             'carreras' => Carrera::with(['planesEstudio:id,nombre,carrera_id', 'materias:id,nombre'])
@@ -83,13 +113,20 @@ class ArchivoController extends Controller
                 ->orderBy('nombre')
                 ->get(),
             'tipos' => TipoArchivo::select('id', 'nombre')->orderBy('nombre')->get(),
-            'estados' => EstadoArchivo::select('id', 'nombre')->orderBy('nombre')->get(),
+            'estados' => $canSetEstado ? EstadoArchivo::select('id', 'nombre')->orderBy('nombre')->get() : [],
+            'estado_default_id' => $estadoPendienteId,
+            'can_set_estado' => $canSetEstado,
         ]);
     }
 
     public function store(StoreArchivoRequest $request)
     {
         $data = $request->validated();
+        $user = auth()->user();
+        $canSetEstado = $user && $user->can('state_archivo');
+        if (!$canSetEstado) {
+            $data['estado_archivo_id'] = $this->estadoPendienteId();
+        }
 
         $this->validarRelacionCarrera($data['carrera_id'], $data['materia_id'], $data['plan_estudio_id'] ?? null);
 
@@ -117,26 +154,146 @@ class ArchivoController extends Controller
             ->with('success', "Archivo {$archivo->titulo} creado correctamente.");
     }
 
-    public function show(Archivo $archivo)
+    public function show(Request $request, Archivo $archivo)
     {
+        $user = $request->user();
+        $userId = $user?->id;
+        $canViewAllEstados = $user && ($user->can('state_archivo') || $user->can('view_moderacion'));
+        $estadoAprobadoId = $this->estadoAprobadoId();
+        $filterKeys = [
+            'search',
+            'autor',
+            'tipo_carrera_id',
+            'carrera_id',
+            'materia_id',
+            'tipo_archivo_id',
+            'plan_estudio_id',
+            'estado_archivo_id',
+            'sort',
+            'direction',
+            'page',
+        ];
+        $filters = $request->only($filterKeys);
+        $filtersClean = array_filter($filters, static fn($v) => !is_null($v) && $v !== '');
+        $backUrl = route('archivos.index', $filtersClean);
+
+        if (!$canViewAllEstados) {
+            if ($estadoAprobadoId) {
+                if ($archivo->estado_archivo_id !== $estadoAprobadoId && $archivo->user_id !== $userId) {
+                    abort(403);
+                }
+            } else {
+                if ($archivo->user_id !== $userId) {
+                    abort(403);
+                }
+            }
+        }
+
+        $this->registrarVisita($request, $archivo);
+
+        $archivo->loadCount(['savers', 'comentarios', 'valoraciones'])->loadAvg('valoraciones', 'puntaje');
+
+        $archivo->setAttribute('is_saved', $user ? $user->savedArchivos()->where('archivo_id', $archivo->id)->exists() : false);
+
         return inertia('archivos/show', [
             'archivo' => $archivo->load([
-                'autor',
+                'autor.profile:id,user_id,nombre_completo,avatar_path',
                 'materia',
                 'tipo',
                 'estado',
                 'planEstudio',
                 'comentarios.autor:id,name',
+                'comentarios.autor.profile:id,user_id,nombre_completo,avatar_path',
                 'valoraciones.autor:id,name',
+                'valoraciones.autor.profile:id,user_id,nombre_completo,avatar_path',
             ]),
             'estados' => EstadoArchivo::select('id', 'nombre')->orderBy('nombre')->get(),
             'can_update' => auth()->user() ? Gate::forUser(auth()->user())->allows('update', $archivo) : false,
+            'backUrl' => $backUrl,
+        ]);
+    }
+
+    public function myStuff(Request $request)
+    {
+        $user = $request->user();
+        $actividadPage = (int) $request->input('actividad_page', 1);
+        $perPageActividad = 10;
+
+        $guardados = $user->savedArchivos()
+            ->with(['materia:id,nombre', 'tipo:id,nombre', 'estado:id,nombre'])
+            ->withCount(['savers', 'comentarios', 'valoraciones'])
+            ->withAvg('valoraciones', 'puntaje')
+            ->orderByDesc('archivo_user_saved.created_at')
+            ->paginate(9, ['archivos.*'], 'guardados_page')
+            ->withQueryString();
+
+        $publicaciones = $user->archivos()
+            ->with(['materia:id,nombre', 'tipo:id,nombre', 'estado:id,nombre'])
+            ->withCount(['savers', 'comentarios', 'valoraciones'])
+            ->withAvg('valoraciones', 'puntaje')
+            ->orderByDesc('created_at')
+            ->paginate(9, ['archivos.*'], 'publicaciones_page')
+            ->withQueryString();
+
+        $comentarios = $user->comentarios()
+            ->with('archivo:id,titulo')
+            ->select('id', 'archivo_id', 'cuerpo', 'created_at')
+            ->latest()
+            ->get();
+
+        $valoraciones = $user->valoraciones()
+            ->with('archivo:id,titulo')
+            ->select('id', 'archivo_id', 'puntaje', 'comentario', 'created_at')
+            ->latest()
+            ->get();
+
+        $actividad = $comentarios->map(function ($c) {
+            return [
+                'type' => 'comentario',
+                'id' => $c->id,
+                'archivo' => $c->archivo,
+                'texto' => $c->cuerpo,
+                'created_at' => $c->created_at,
+            ];
+        })->concat($valoraciones->map(function ($v) {
+            return [
+                'type' => 'valoracion',
+                'id' => $v->id,
+                'archivo' => $v->archivo,
+                'puntaje' => $v->puntaje,
+                'texto' => $v->comentario,
+                'created_at' => $v->created_at,
+            ];
+        }))->sortByDesc('created_at')->values();
+
+        $actividadPaginated = new LengthAwarePaginator(
+            $actividad->forPage($actividadPage, $perPageActividad)->values(),
+            $actividad->count(),
+            $perPageActividad,
+            $actividadPage,
+            [
+                'path' => $request->url(),
+                'pageName' => 'actividad_page',
+                'query' => $request->query(),
+            ]
+        );
+
+        return inertia('mis-cosas/index', [
+            'guardados' => $guardados,
+            'publicaciones' => $publicaciones,
+            'actividad' => $actividadPaginated,
         ]);
     }
 
     public function edit(Archivo $archivo)
     {
         $this->authorize('update', $archivo);
+
+        $archivo->load(['materia.carreras:id', 'planEstudio:id,nombre']);
+        $archivo->setAttribute('carrera_id', optional($archivo->materia?->carreras?->first())->id);
+        $canSetEstado = auth()->user()?->can('state_archivo') ?? false;
+        $estadoAprobadoId = $this->estadoAprobadoId();
+        $isAprobado = $estadoAprobadoId && $archivo->estado_archivo_id === $estadoAprobadoId;
 
         return inertia('archivos/edit', [
             'archivo' => $archivo,
@@ -150,6 +307,9 @@ class ArchivoController extends Controller
                 ->get(),
             'tipos' => TipoArchivo::select('id', 'nombre')->orderBy('nombre')->get(),
             'estados' => EstadoArchivo::select('id', 'nombre')->orderBy('nombre')->get(),
+            'can_set_estado' => $canSetEstado,
+            'can_replace_file' => auth()->user()?->can('replace_archivo') ?? false,
+            'is_aprobado' => $isAprobado,
         ]);
     }
 
@@ -158,10 +318,21 @@ class ArchivoController extends Controller
         $this->authorize('update', $archivo);
 
         $data = $request->validated();
+        $user = $request->user();
+        $canReplaceAprobado = $user && $user->can('replace_archivo');
+        $estadoAprobadoId = $this->estadoAprobadoId();
+        $isAprobado = $estadoAprobadoId && $archivo->estado_archivo_id === $estadoAprobadoId;
+        $fileChanged = false;
 
         $this->validarRelacionCarrera($data['carrera_id'], $data['materia_id'], $data['plan_estudio_id'] ?? null);
 
         if ($request->hasFile('archivo')) {
+            if ($isAprobado && !$canReplaceAprobado) {
+                return back()
+                    ->withErrors(['archivo' => 'No puedes reemplazar el archivo cuando ya está aprobado.'])
+                    ->withInput($request->except('archivo'));
+            }
+
             $file = $request->file('archivo');
             $path = $file->store('archivos', 'public');
 
@@ -178,11 +349,44 @@ class ArchivoController extends Controller
             $data['file_path'] = $path;
             $data['thumbnail_path'] = $thumbnailPath;
             $data['peso_bytes'] = $file->getSize();
+            $fileChanged = true;
         }
 
         unset($data['carrera_id']);
 
         $archivo->update($data);
+
+        // Notificación y correo al autor tras la edición solo si cambió el archivo y no está aprobado
+        if ($fileChanged && !$isAprobado) {
+            $archivo->loadMissing(['autor', 'materia', 'tipo', 'estado', 'planEstudio']);
+
+            NotificacionService::crearParaAutorArchivo($archivo->autor, [
+                'actor_id' => $user?->id,
+                'archivo_id' => $archivo->id,
+                'tipo' => 'archivo_actualizado',
+                'titulo' => 'Actualizaste tu archivo',
+                'mensaje' => "{$archivo->titulo} fue actualizado.",
+            ]);
+
+            if (config('mail.notifications_enabled') && $archivo->autor && $archivo->autor->email) {
+                Mail::to($archivo->autor->email)->queue(new ArchivoActualizadoMail($archivo, $user));
+            }
+        }
+
+        // Notificación a moderadores/superadmin con permiso edit_file_notify cuando cambia el archivo
+        if ($fileChanged) {
+            $moderadores = User::permission('edit_file_notify')->get();
+            foreach ($moderadores as $moderador) {
+                NotificacionService::crear([
+                    'user_id' => $moderador->id,
+                    'actor_id' => $user?->id,
+                    'archivo_id' => $archivo->id,
+                    'tipo' => 'archivo_actualizado',
+                    'titulo' => "Archivo actualizado: {$archivo->titulo}",
+                    'mensaje' => "Se reemplazó el archivo \"{$archivo->titulo}\".",
+                ]);
+            }
+        }
 
         return redirect()
             ->route('archivos.index')
@@ -227,6 +431,30 @@ class ArchivoController extends Controller
         return $pdf->stream("archivo-{$archivo->id}.pdf");
     }
 
+    public function save(Request $request, Archivo $archivo)
+    {
+        $user = $request->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        $user->savedArchivos()->syncWithoutDetaching([$archivo->id]);
+
+        return back()->with('success', 'Archivo guardado.');
+    }
+
+    public function unsave(Request $request, Archivo $archivo)
+    {
+        $user = $request->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        $user->savedArchivos()->detach($archivo->id);
+
+        return back()->with('success', 'Archivo removido de guardados.');
+    }
+
     private function buildFilteredQuery(Request $request): Builder
     {
         $search = $request->input('search');
@@ -236,14 +464,22 @@ class ArchivoController extends Controller
         $tipoId = $request->input('tipo_archivo_id');
         $planId = $request->input('plan_estudio_id');
         $estadoId = $request->input('estado_archivo_id');
+        $tipoCarreraId = $request->input('tipo_carrera_id');
+        $user = $request->user();
+        $userId = $user?->id;
+        $canViewAllEstados = $user && ($user->can('state_archivo') || $user->can('view_moderacion'));
+        $estadoAprobadoId = $this->estadoAprobadoId();
 
         $query = Archivo::with([
             'autor:id,name',
             'materia:id,nombre',
+            'materia.carreras:id,nombre',
             'tipo:id,nombre',
             'estado:id,nombre',
-            'planEstudio:id,nombre',
-        ]);
+            'planEstudio:id,nombre,carrera_id',
+            'planEstudio.carrera:id,nombre',
+        ])->withCount(['savers', 'comentarios', 'valoraciones'])
+            ->withAvg('valoraciones', 'puntaje');
 
         if ($search) {
             $query->where('titulo', 'like', '%' . $search . '%');
@@ -252,6 +488,12 @@ class ArchivoController extends Controller
         if ($autor) {
             $query->whereHas('autor', function ($q) use ($autor) {
                 $q->where('name', 'like', '%' . $autor . '%');
+            });
+        }
+
+        if ($tipoCarreraId) {
+            $query->whereHas('materia.carreras', function ($q) use ($tipoCarreraId) {
+                $q->where('carreras.tipo_carrera_id', $tipoCarreraId);
             });
         }
 
@@ -275,6 +517,23 @@ class ArchivoController extends Controller
 
         if ($estadoId) {
             $query->where('estado_archivo_id', $estadoId);
+        }
+
+        if (!$canViewAllEstados) {
+            $query->where(function ($q) use ($estadoAprobadoId, $userId) {
+                if ($estadoAprobadoId) {
+                    $q->where('estado_archivo_id', $estadoAprobadoId);
+                    if ($userId) {
+                        $q->orWhere('user_id', $userId);
+                    }
+                } else {
+                    if ($userId) {
+                        $q->where('user_id', $userId);
+                    } else {
+                        $q->whereRaw('1=0');
+                    }
+                }
+            });
         }
 
         return $query;
@@ -400,6 +659,18 @@ class ArchivoController extends Controller
             }
         }
     }
+
+    private function estadoPendienteId(): ?int
+    {
+        return EstadoArchivo::where('nombre', 'like', '%pend%')->orderBy('id')->value('id')
+            ?? EstadoArchivo::orderBy('id')->value('id');
+    }
+
+    private function estadoAprobadoId(): ?int
+    {
+        return EstadoArchivo::where('nombre', 'like', '%aprob%')->orderBy('id')->value('id')
+            ?? null;
+    }
  
     public function export(Request $request)
     {
@@ -414,4 +685,17 @@ class ArchivoController extends Controller
         return Excel::download(new ArchivosExport($archivos), 'archivos.xlsx');
     }
 
+    private function registrarVisita(Request $request, Archivo $archivo): void
+    {
+        $sessionKey = 'archivos_vistos';
+        $vistos = $request->session()->get($sessionKey, []);
+
+        if (!in_array($archivo->id, $vistos, true)) {
+            $archivo->increment('visitas_count');
+            $archivo->visitas_count = ($archivo->visitas_count ?? 0) + 1;
+            $vistos[] = $archivo->id;
+            // Limitar el array para no crecer indefinidamente
+            $request->session()->put($sessionKey, array_slice(array_unique($vistos), -50));
+        }
+    }
 }

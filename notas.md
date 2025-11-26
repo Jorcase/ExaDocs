@@ -24,6 +24,11 @@
 - Se armó un flujo completo (ej. Planes de estudio): controller recibe `sort/direction` y filtros, responde data paginada; en el front se pasa `externalSort` y `onSortChange` para ordenamiento server-side; los filtros viven en un Sheet lateral con botón “Filtros” y “Limpiar” sobre la tabla.
 - Para catálogos pequeños (Tipo Carrera / Estado Archivo) se mantiene tabla simple, solo encabezado con ListSection.
 
+## Archivos: carga incremental
+- Backend sigue devolviendo paginación (`current_page`, `next_page_url`) con 9 ítems por página.
+- Front (`resources/js/pages/archivos/index.tsx`) dejó de usar paginador y ahora acumula resultados en un estado `items`; botón “Cargar más” trae la siguiente página y concatena sin perder las anteriores.
+- Al cambiar filtros/orden, se resetean los items con la primera página; si no hay `next_page_url` se oculta el botón.
+
 ## Correos habilitar/deshabilitar
 - Se agregó bandera `config('mail.notifications_enabled')` (env: `MAIL_NOTIFICATIONS_ENABLED`, default `false`).
 - Todos los mails (Archivo creado, Revisión, Comentario, Valoración, Reporte) se envían solo si la bandera está en `true`.
@@ -43,4 +48,5 @@
 # pendiente
 formatos de archivos para subir
 notificaciones
-cruds en archivos por ejemplo elegir carrera, si elijo una materia que me diga del plan que esta disponible esa carrera, porque sino se pueden elegir materias con plan de estudio que no son
+
+libreria swiper para carruseles

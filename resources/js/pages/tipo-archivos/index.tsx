@@ -134,16 +134,18 @@ export default function Index({ tipos, filters }: { tipos: TiposPaginated; filte
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Tipos de archivo | Listado" />
             <div className="m-4 space-y-4">
-                <ListSection
-                    title="Tipo de archivos"
-                    description="Catálogo de formatos permitidos"
-                    actions={
-                        <Link href={route('tipo-archivos.create')}>
-                            <Button>Crear tipo</Button>
-                        </Link>
-                    }
-                />
-                <Card>
+                <section className="rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
+                    <ListSection
+                        title="Tipo de archivos"
+                        description="Catálogo de formatos permitidos"
+                        actions={
+                            <Link href={route('tipo-archivos.create')}>
+                                <Button>Crear tipo</Button>
+                            </Link>
+                        }
+                    />
+                </section>
+                <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
                     <CardContent className="space-y-4">
                         <DataTable
                             columns={columns}

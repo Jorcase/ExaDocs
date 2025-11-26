@@ -3,6 +3,7 @@
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
+use App\Http\Controllers\CarouselController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CarreraController;
 use App\Http\Controllers\MateriaController;
@@ -21,15 +22,21 @@ use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\EstadisticasController;
 
-Route::get('/', function () {
-    return Inertia::render('welcome', [
-        'canRegister' => Features::enabled(Features::registration()),
-    ]);
-})->name('home');
+Route::get('/', [CarouselController::class, 'index'])->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('mis-cosas', [ArchivoController::class, 'myStuff'])->name('mis-cosas')->middleware('auth');
+
+    // Carrusel (moderación/catalogos)
+    Route::get('carousel', [CarouselController::class, 'adminList'])->name('carousel.index')->can('view_catalogos');
+    Route::get('carousel/create', [CarouselController::class, 'create'])->name('carousel.create')->can('view_catalogos');
+    Route::post('carousel', [CarouselController::class, 'store'])->name('carousel.store')->can('view_catalogos');
+    Route::get('carousel/edit/{carousel}', [CarouselController::class, 'edit'])->name('carousel.edit')->can('view_catalogos');
+    Route::put('carousel/{carousel}', [CarouselController::class, 'update'])->name('carousel.update')->can('view_catalogos');
+    Route::delete('carousel/{carousel}', [CarouselController::class, 'destroy'])->name('carousel.destroy')->can('view_catalogos');
 
     // Tipos de carrera
     Route::get('tipo-carreras', [TipoCarreraController::class, 'index'])->name('tipo-carreras.index')->can('view_tipocarrera');
@@ -51,33 +58,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('carreras/export', [CarreraController::class, 'exportCarreras'])->name('carreras.export');
     
     // Materias
-    Route::get('materia', [MateriaController::class, 'index'])->name('materias.index');
-    Route::get('materias/create', [MateriaController::class, 'create'])->name('materias.create');
-    Route::post('materias', [MateriaController::class, 'store'])->name('materias.store');
-    Route::get('materias/edit/{materia}', [MateriaController::class, 'edit'])->name('materias.edit');
-    Route::put('materias/{materia}', [MateriaController::class, 'update'])->name('materias.update');
-    Route::delete('materias/{materia}', [MateriaController::class, 'destroy'])->name('materias.destroy');
-    Route::get('materias/report', [MateriaController::class, 'generateReport'])->name('materias.report');
-    Route::get('materias/export', [MateriaController::class, 'exportMaterias'])->name('materias.export');
+    Route::get('materia', [MateriaController::class, 'index'])->name('materias.index')->can('view_catalogos');
+    Route::get('materias/create', [MateriaController::class, 'create'])->name('materias.create')->can('view_catalogos');
+    Route::post('materias', [MateriaController::class, 'store'])->name('materias.store')->can('view_catalogos');
+    Route::get('materias/edit/{materia}', [MateriaController::class, 'edit'])->name('materias.edit')->can('view_catalogos');
+    Route::put('materias/{materia}', [MateriaController::class, 'update'])->name('materias.update')->can('view_catalogos');
+    Route::delete('materias/{materia}', [MateriaController::class, 'destroy'])->name('materias.destroy')->can('view_catalogos');
+    Route::get('materias/report', [MateriaController::class, 'generateReport'])->name('materias.report')->can('view_catalogos');
+    Route::get('materias/export', [MateriaController::class, 'exportMaterias'])->name('materias.export')->can('view_catalogos');
 
     // Planes de estudio
-    Route::get('planes-estudio', [PlanEstudioController::class, 'index'])->name('planes-estudio.index');
-    Route::get('planes-estudio/create', [PlanEstudioController::class, 'create'])->name('planes-estudio.create');
-    Route::post('planes-estudio', [PlanEstudioController::class, 'store'])->name('planes-estudio.store');
-    Route::get('planes-estudio/{plan}', [PlanEstudioController::class, 'show'])->name('planes-estudio.show');
-    Route::get('planes-estudio/{plan}/edit', [PlanEstudioController::class, 'edit'])->name('planes-estudio.edit');
-    Route::put('planes-estudio/{plan}', [PlanEstudioController::class, 'update'])->name('planes-estudio.update');
-    Route::delete('planes-estudio/{plan}', [PlanEstudioController::class, 'destroy'])->name('planes-estudio.destroy');
+    Route::get('planes-estudio', [PlanEstudioController::class, 'index'])->name('planes-estudio.index')->can('view_catalogos');
+    Route::get('planes-estudio/create', [PlanEstudioController::class, 'create'])->name('planes-estudio.create')->can('view_catalogos');
+    Route::post('planes-estudio', [PlanEstudioController::class, 'store'])->name('planes-estudio.store')->can('view_catalogos');
+    Route::get('planes-estudio/{plan}', [PlanEstudioController::class, 'show'])->name('planes-estudio.show')->can('view_catalogos');
+    Route::get('planes-estudio/{plan}/edit', [PlanEstudioController::class, 'edit'])->name('planes-estudio.edit')->can('view_catalogos');
+    Route::put('planes-estudio/{plan}', [PlanEstudioController::class, 'update'])->name('planes-estudio.update')->can('view_catalogos');
+    Route::delete('planes-estudio/{plan}', [PlanEstudioController::class, 'destroy'])->name('planes-estudio.destroy')->can('view_catalogos');
+
+    // Estadísticas
+    Route::get('estadisticas', [EstadisticasController::class, 'index'])
+        ->name('estadisticas.index')
+        ->can('view_estadisticas');
 
     // Tipos de archivo
-    Route::get('tipo-archivos', [TipoArchivoController::class, 'index'])->name('tipo-archivos.index');
-    Route::get('tipo-archivos/report', [TipoArchivoController::class, 'generateReport'])->name('tipo-archivos.report');
-    Route::get('tipo-archivos/create', [TipoArchivoController::class, 'create'])->name('tipo-archivos.create');
-    Route::post('tipo-archivos', [TipoArchivoController::class, 'store'])->name('tipo-archivos.store');
-    Route::get('tipo-archivos/{tipoArchivo}', [TipoArchivoController::class, 'show'])->name('tipo-archivos.show');
-    Route::get('tipo-archivos/edit/{tipoArchivo}', [TipoArchivoController::class, 'edit'])->name('tipo-archivos.edit');
-    Route::put('tipo-archivos/{tipoArchivo}', [TipoArchivoController::class, 'update'])->name('tipo-archivos.update');
-    Route::delete('tipo-archivos/{tipoArchivo}', [TipoArchivoController::class, 'destroy'])->name('tipo-archivos.destroy');
+    Route::get('tipo-archivos', [TipoArchivoController::class, 'index'])->name('tipo-archivos.index')->can('view_catalogos');
+    Route::get('tipo-archivos/report', [TipoArchivoController::class, 'generateReport'])->name('tipo-archivos.report')->can('view_catalogos');
+    Route::get('tipo-archivos/create', [TipoArchivoController::class, 'create'])->name('tipo-archivos.create')->can('view_catalogos');
+    Route::post('tipo-archivos', [TipoArchivoController::class, 'store'])->name('tipo-archivos.store')->can('view_catalogos');
+    Route::get('tipo-archivos/{tipoArchivo}', [TipoArchivoController::class, 'show'])->name('tipo-archivos.show')->can('view_catalogos');
+    Route::get('tipo-archivos/edit/{tipoArchivo}', [TipoArchivoController::class, 'edit'])->name('tipo-archivos.edit')->can('view_catalogos');
+    Route::put('tipo-archivos/{tipoArchivo}', [TipoArchivoController::class, 'update'])->name('tipo-archivos.update')->can('view_catalogos');
+    Route::delete('tipo-archivos/{tipoArchivo}', [TipoArchivoController::class, 'destroy'])->name('tipo-archivos.destroy')->can('view_catalogos');
 
     // Estado archivos
     Route::get('estado-archivos', [EstadoArchivoController::class, 'index'])->name('estado-archivos.index')->can('view_estadoarchivo');
@@ -90,7 +102,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Archivos
     Route::get('archivos', [ArchivoController::class, 'index'])->name('archivos.index');
-    Route::get('archivos/create', [ArchivoController::class, 'create'])->name('archivos.create');
+    Route::get('archivos/create', [ArchivoController::class, 'create'])->name('archivos.create')->can('create_archivo');
     Route::post('archivos', [ArchivoController::class, 'store'])->name('archivos.store');
     Route::get('archivos/report', [ArchivoController::class, 'generateReport'])->name('archivos.report')->can('view_pdf');
     Route::get('archivos/export', [ArchivoController::class, 'export'])->name('archivos.export')->can('view_excel');
@@ -99,46 +111,58 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('archivos/edit/{archivo}', [ArchivoController::class, 'edit'])->name('archivos.edit')->can('update', 'archivo');
     Route::put('archivos/{archivo}', [ArchivoController::class, 'update'])->name('archivos.update')->can('update', 'archivo');
     Route::delete('archivos/{archivo}', [ArchivoController::class, 'destroy'])->name('archivos.destroy')->can('delete', 'archivo');
+    Route::post('archivos/{archivo}/guardar', [ArchivoController::class, 'save'])->name('archivos.save')->middleware('auth');
+    Route::delete('archivos/{archivo}/guardar', [ArchivoController::class, 'unsave'])->name('archivos.unsave')->middleware('auth');
 
     // Historial revisiones
-    Route::get('historial-revisiones', [HistorialRevisionController::class, 'index'])->name('historial-revisiones.index');
-    Route::get('historial-revisiones/create', [HistorialRevisionController::class, 'create'])->name('historial-revisiones.create');
-    Route::post('historial-revisiones', [HistorialRevisionController::class, 'store'])->name('historial-revisiones.store');
-    Route::get('historial-revisiones/edit/{historialRevision}', [HistorialRevisionController::class, 'edit'])->name('historial-revisiones.edit');
-    Route::put('historial-revisiones/{historialRevision}', [HistorialRevisionController::class, 'update'])->name('historial-revisiones.update');
-    Route::delete('historial-revisiones/{historialRevision}', [HistorialRevisionController::class, 'destroy'])->name('historial-revisiones.destroy');
+    Route::get('historial-revisiones', [HistorialRevisionController::class, 'index'])->name('historial-revisiones.index')->can('view_moderacion');
+    Route::get('historial-revisiones/create', [HistorialRevisionController::class, 'create'])->name('historial-revisiones.create')->can('view_moderacion');
+    Route::post('historial-revisiones', [HistorialRevisionController::class, 'store'])->name('historial-revisiones.store')->can('view_moderacion');
+    Route::get('historial-revisiones/edit/{historialRevision}', [HistorialRevisionController::class, 'edit'])->name('historial-revisiones.edit')->can('view_moderacion');
+    Route::put('historial-revisiones/{historialRevision}', [HistorialRevisionController::class, 'update'])->name('historial-revisiones.update')->can('view_moderacion');
+    Route::delete('historial-revisiones/{historialRevision}', [HistorialRevisionController::class, 'destroy'])->name('historial-revisiones.destroy')->can('view_moderacion');
 
     // Reportes de contenido
-    Route::get('reportes', [ReporteContenidoController::class, 'index'])->name('reportes.index');
-    Route::get('reportes/create', [ReporteContenidoController::class, 'create'])->name('reportes.create');
-    Route::post('reportes', [ReporteContenidoController::class, 'store'])->name('reportes.store');
-    Route::get('reportes/edit/{reporte}', [ReporteContenidoController::class, 'edit'])->name('reportes.edit');
-    Route::put('reportes/{reporte}', [ReporteContenidoController::class, 'update'])->name('reportes.update');
-    Route::delete('reportes/{reporte}', [ReporteContenidoController::class, 'destroy'])->name('reportes.destroy');
+    Route::get('reportes', [ReporteContenidoController::class, 'index'])->name('reportes.index')->can('view_moderacion');
+    Route::get('reportes/create', [ReporteContenidoController::class, 'create'])->name('reportes.create')->can('view_moderacion');
+    Route::post('reportes', [ReporteContenidoController::class, 'store'])->name('reportes.store')->can('view_moderacion');
+    Route::get('reportes/edit/{reporte}', [ReporteContenidoController::class, 'edit'])->name('reportes.edit')->can('view_moderacion');
+    Route::put('reportes/{reporte}', [ReporteContenidoController::class, 'update'])->name('reportes.update')->can('view_moderacion');
+    Route::delete('reportes/{reporte}', [ReporteContenidoController::class, 'destroy'])->name('reportes.destroy')->can('view_moderacion');
 
     // Comentarios
-    Route::get('comentarios', [ComentarioController::class, 'index'])->name('comentarios.index');
-    Route::get('comentarios/create', [ComentarioController::class, 'create'])->name('comentarios.create');
+    Route::get('comentarios', [ComentarioController::class, 'index'])->name('comentarios.index')->can('view_moderacion');
+    Route::get('comentarios/create', [ComentarioController::class, 'create'])->name('comentarios.create')->can('view_moderacion');
     Route::post('comentarios', [ComentarioController::class, 'store'])->name('comentarios.store');
-    Route::get('comentarios/edit/{comentario}', [ComentarioController::class, 'edit'])->name('comentarios.edit');
+    Route::get('comentarios/edit/{comentario}', [ComentarioController::class, 'edit'])->name('comentarios.edit')->can('view_moderacion');
     Route::put('comentarios/{comentario}', [ComentarioController::class, 'update'])->name('comentarios.update');
     Route::delete('comentarios/{comentario}', [ComentarioController::class, 'destroy'])->name('comentarios.destroy');
 
     // Valoraciones
-    Route::get('valoraciones', [ValoracionController::class, 'index'])->name('valoraciones.index');
-    Route::get('valoraciones/create', [ValoracionController::class, 'create'])->name('valoraciones.create');
+    Route::get('valoraciones', [ValoracionController::class, 'index'])->name('valoraciones.index')->can('view_moderacion');
+    Route::get('valoraciones/create', [ValoracionController::class, 'create'])->name('valoraciones.create')->can('view_moderacion');
     Route::post('valoraciones', [ValoracionController::class, 'store'])->name('valoraciones.store');
-    Route::get('valoraciones/edit/{valoracion}', [ValoracionController::class, 'edit'])->name('valoraciones.edit');
+    Route::get('valoraciones/edit/{valoracion}', [ValoracionController::class, 'edit'])->name('valoraciones.edit')->can('view_moderacion');
     Route::put('valoraciones/{valoracion}', [ValoracionController::class, 'update'])->name('valoraciones.update');
     Route::delete('valoraciones/{valoracion}', [ValoracionController::class, 'destroy'])->name('valoraciones.destroy');
 
-    // Notificaciones
-    Route::get('notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');
-    Route::get('notificaciones/create', [NotificacionController::class, 'create'])->name('notificaciones.create');
-    Route::post('notificaciones', [NotificacionController::class, 'store'])->name('notificaciones.store');
-    Route::get('notificaciones/edit/{notificacion}', [NotificacionController::class, 'edit'])->name('notificaciones.edit');
-    Route::put('notificaciones/{notificacion}', [NotificacionController::class, 'update'])->name('notificaciones.update');
-    Route::delete('notificaciones/{notificacion}', [NotificacionController::class, 'destroy'])->name('notificaciones.destroy');
+    // Notificaciones (usuario)
+    Route::middleware('can:view_notifipersonal')->group(function () {
+        Route::get('notificaciones', [NotificacionController::class, 'userIndex'])->name('notificaciones.index');
+        Route::post('notificaciones/{notificacion}/read', [NotificacionController::class, 'markRead'])->name('notificaciones.read');
+        Route::post('notificaciones/{notificacion}/unread', [NotificacionController::class, 'markUnread'])->name('notificaciones.unread');
+        Route::post('notificaciones/read-all', [NotificacionController::class, 'markAllRead'])->name('notificaciones.readAll');
+    });
+
+    // Notificaciones (moderación)
+    Route::prefix('admin/notificaciones')->name('admin.notificaciones.')->middleware('can:view_notificaciones')->group(function () {
+        Route::get('/', [NotificacionController::class, 'adminIndex'])->name('index');
+        Route::get('create', [NotificacionController::class, 'create'])->name('create');
+        Route::post('/', [NotificacionController::class, 'store'])->name('store');
+        Route::get('{notificacion}/edit', [NotificacionController::class, 'edit'])->name('edit');
+        Route::put('{notificacion}', [NotificacionController::class, 'update'])->name('update');
+        Route::delete('{notificacion}', [NotificacionController::class, 'destroy'])->name('destroy');
+    });
 
     // Auditorías
     Route::get('auditorias', [AuditoriaController::class, 'index'])->name('auditorias.index');
@@ -149,13 +173,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('auditorias/{auditoria}', [AuditoriaController::class, 'destroy'])->name('auditorias.destroy');
 
     // Perfiles de usuario
-    Route::get('perfiles', [UserProfileController::class, 'index'])->name('perfiles.index');
-    Route::get('perfiles/create', [UserProfileController::class, 'create'])->name('perfiles.create');
-    Route::post('perfiles', [UserProfileController::class, 'store'])->name('perfiles.store');
-    Route::get('perfiles/edit/{perfile}', [UserProfileController::class, 'edit'])->name('perfiles.edit');
-    Route::put('perfiles/{perfile}', [UserProfileController::class, 'update'])->name('perfiles.update');
-    Route::delete('perfiles/{perfile}', [UserProfileController::class, 'destroy'])->name('perfiles.destroy');
-    Route::get('perfiles/report', [UserProfileController::class, 'generateReport'])->name('perfiles.report');
+    Route::get('perfiles', [UserProfileController::class, 'index'])->name('perfiles.index')->can('view_perfiles');
+    Route::get('perfiles/create', [UserProfileController::class, 'create'])->name('perfiles.create')->can('view_perfiles');
+    Route::post('perfiles', [UserProfileController::class, 'store'])->name('perfiles.store')->can('view_perfiles');
+    Route::get('perfiles/report', [UserProfileController::class, 'generateReport'])->name('perfiles.report')->can('view_perfiles');
+    Route::get('perfiles/edit/{perfile}', [UserProfileController::class, 'edit'])->name('perfiles.edit')->can('update', 'perfile');
+    Route::get('perfiles/{perfile}', [UserProfileController::class, 'show'])->name('perfiles.show')->can('view_perfiles');
+    Route::put('perfiles/{perfile}', [UserProfileController::class, 'update'])->name('perfiles.update')->can('update', 'perfile');
+    Route::delete('perfiles/{perfile}', [UserProfileController::class, 'destroy'])->name('perfiles.destroy')->can('delete', 'perfile');
+    Route::get('perfil', [UserProfileController::class, 'showProfile'])->name('perfil.show');
+    Route::get('perfil/edit', [UserProfileController::class, 'editProfile'])->name('perfil.edit');
+    Route::get('perfil/{perfile}', [UserProfileController::class, 'showPublic'])->name('perfil.public');
+    Route::put('perfil', [UserProfileController::class, 'updateProfile'])->name('perfil.update');
+    
 
     // Roles y permisos
     Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index')->can('view_permisos');

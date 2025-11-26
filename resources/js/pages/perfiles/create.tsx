@@ -79,7 +79,8 @@ export default function Create({
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Crear perfil" />
-      <div className="w-full max-w-2xl p-4 space-y-4">
+      <div className="flex justify-center px-4 py-6">
+      <div className="w-full max-w-2xl space-y-4 rounded-2xl border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 shadow-lg backdrop-blur-sm dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
         <form onSubmit={handleSubmit} className="space-y-4">
           {renderSelect('Usuario', data.user_id, (val) => setData('user_id', val), usuarios, errors.user_id)}
           {renderSelect(
@@ -136,6 +137,7 @@ export default function Create({
             Guardar perfil
           </Button>
         </form>
+      </div>
       </div>
     </AppLayout>
   );

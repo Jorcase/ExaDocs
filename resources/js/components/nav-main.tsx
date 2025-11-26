@@ -21,9 +21,10 @@ import { usePermissions } from '@/hooks/use-permissions';
 interface Props {
     items?: NavItem[];
     groups?: NavGroup[];
+    primarySize?: 'md' | 'lg';
 }
 
-export function NavMain({ items = [], groups }: Props) {
+export function NavMain({ items = [], groups, primarySize = 'md' }: Props) {
     const page = usePage();
     const storageKey = 'sidebar:groups-open';
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -63,24 +64,28 @@ export function NavMain({ items = [], groups }: Props) {
         });
     };
 
-    const renderItems = (list: NavItem[]) => (
-        <SidebarMenu>
-            {list.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                        asChild
-                        isActive={page.url.startsWith(resolveUrl(item.href))}
-                        tooltip={{ children: item.title }}
-                    >
-                        <Link href={item.href} prefetch preserveScroll>
-                            {item.icon && <item.icon />}
-                            <span>{item.title}</span>
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            ))}
-        </SidebarMenu>
-    );
+    const primaryClasses =
+        primarySize === 'lg'
+            ? 'h-12 text-[15px] font-semibold [&_svg]:h-5 [&_svg]:w-5 [&_span]:truncate data-[active=true]:bg-[#bdd8f5] data-[active=true]:text-[#0b1930] dark:data-[active=true]:bg-[#1f2b3f] dark:data-[active=true]:text-white data-[active=true]:shadow-sm'
+            : undefined;
+    const subActiveClasses =
+        'data-[active=true]:bg-[#bdd8f5] data-[active=true]:text-[#0b1930] dark:data-[active=true]:bg-[#1f2b3f] dark:data-[active=true]:text-white';
+
+    const normalizePath = (raw: string): string => {
+        try {
+            const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+            return raw.startsWith('http') ? new URL(raw).pathname : new URL(raw, base).pathname;
+        } catch {
+            return raw.split('?')[0].split('#')[0];
+        }
+    };
+
+    const isActiveHref = (href: NavItem['href']): boolean => {
+        const targetPath = normalizePath(resolveUrl(href));
+        const currPath = normalizePath(page.url || '');
+        if (targetPath === '/') return currPath === '/';
+        return currPath === targetPath || currPath.startsWith(targetPath.endsWith('/') ? targetPath : `${targetPath}/`);
+    };
 
     return (
         <div className="space-y-1">
@@ -89,8 +94,9 @@ export function NavMain({ items = [], groups }: Props) {
                     {filteredItems.map((item) => (
                         <SidebarMenuItem key={item.title}>
                             <SidebarMenuButton
+                                className={primaryClasses}
                                 asChild
-                                isActive={page.url.startsWith(resolveUrl(item.href))}
+                                isActive={isActiveHref(item.href)}
                                 tooltip={{ children: item.title }}
                             >
                                 <Link href={item.href} prefetch preserveScroll>
@@ -114,7 +120,10 @@ export function NavMain({ items = [], groups }: Props) {
                             >
                                 <SidebarMenuItem>
                                     <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton>
+                                        <SidebarMenuButton
+                                            className={primaryClasses}
+                                            isActive={group.items.some((g) => isActiveHref(g.href))}
+                                        >
                                             <div className="flex items-center gap-2">
                                                 <ChevronDown className="h-4 w-4 transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
                                                 <span className="font-semibold">{group.title}</span>
@@ -127,7 +136,8 @@ export function NavMain({ items = [], groups }: Props) {
                                                 <SidebarMenuSubItem key={item.title}>
                                                     <SidebarMenuSubButton
                                                         asChild
-                                                        isActive={page.url.startsWith(resolveUrl(item.href))}
+                                                        className={subActiveClasses}
+                                                        isActive={isActiveHref(item.href)}
                                                     >
                                                         <Link href={item.href} prefetch preserveScroll>
                                                             {item.icon && <item.icon />}

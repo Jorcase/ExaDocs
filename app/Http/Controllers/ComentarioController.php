@@ -106,8 +106,7 @@ class ComentarioController extends Controller
             ],
         ]);
 
-        return redirect()->route('comentarios.index')
-            ->with('success', "Comentario #{$comentario->id} creado.");
+        return redirect()->back()->with('success', "Comentario #{$comentario->id} creado.");
     }
 
     public function edit(Comentario $comentario)
@@ -123,15 +122,13 @@ class ComentarioController extends Controller
     {
         $comentario->update($request->validated());
 
-        return redirect()->route('comentarios.index')
-            ->with('success', "Comentario #{$comentario->id} actualizado.");
+        return redirect()->back()->with('success', "Comentario #{$comentario->id} actualizado.");
     }
 
     public function destroy(Comentario $comentario)
     {
         $comentario->delete();
 
-        return redirect()->route('comentarios.index')
-            ->with('success', "Comentario #{$comentario->id} eliminado.");
+        return redirect()->back()->with('success', "Comentario #{$comentario->id} eliminado.");
     }
 }

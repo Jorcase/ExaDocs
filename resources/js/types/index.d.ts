@@ -29,6 +29,16 @@ export interface SharedData {
     quote: { message: string; author: string };
     auth: Auth;
     sidebarOpen: boolean;
+    notifications?: {
+        items: {
+            id: number;
+            titulo: string;
+            mensaje?: string | null;
+            leido_en?: string | null;
+            created_at?: string;
+        }[];
+        total_unread: number;
+    } | null;
     [key: string]: unknown;
 }
 

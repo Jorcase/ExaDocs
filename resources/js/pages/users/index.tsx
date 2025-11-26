@@ -46,7 +46,7 @@ export default function Index({ users, filters }: Props) {
     <AppLayout breadcrumbs={[{ title: 'Usuarios', href: route('users.index') }]}>
       <Head title="Usuarios" />
       <div className="m-4 space-y-4">
-        <Card>
+        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
           <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-lg font-semibold">Gestión de usuarios</CardTitle>

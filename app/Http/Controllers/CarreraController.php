@@ -125,7 +125,9 @@ class CarreraController extends Controller
         $query = $this->buildFilteredQuery($request);
         $this->applySorting($query, $table, $sort, $direction);
 
-        $carreras = $query->select("{$table}.id", "{$table}.nombre", "{$table}.codigo", "{$table}.descripcion", "{$table}.tipo_carrera_id")->get();
+        $carreras = $query
+            ->select("{$table}.id", "{$table}.nombre", "{$table}.codigo", "{$table}.descripcion", "{$table}.estado", "{$table}.tipo_carrera_id")
+            ->get();
         $pdf = Pdf::loadView('pdf.carreras', compact('carreras'));
         return $pdf->stream('carreras.pdf');
     }

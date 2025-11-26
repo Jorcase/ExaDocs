@@ -16,7 +16,7 @@
     <thead>
       <tr>
         <th>ID</th>
-        <th>Usuario</th>
+        <th>Nombre completo</th>
         <th>Email</th>
         <th>Carrera principal</th>
         <th>Documento</th>
@@ -27,7 +27,7 @@
       @foreach($perfiles as $perfil)
         <tr>
           <td>{{ $perfil->id }}</td>
-          <td>{{ $perfil->user->name ?? '—' }}</td>
+          <td>{{ $perfil->nombre_completo ?? $perfil->user->name ?? '—' }}</td>
           <td>{{ $perfil->user->email ?? '—' }}</td>
           <td>{{ $perfil->carrera->nombre ?? '—' }}</td>
           <td>{{ $perfil->documento ?? '—' }}</td>

@@ -6,7 +6,7 @@ import { ConfirmDelete } from '@/components/confirm-delete';
 import { route } from 'ziggy-js';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { FileText, FileSpreadsheet, FileCode2, FileTextIcon, FileSpreadsheetIcon, Filter, RotateCcw } from 'lucide-react';
+import { FileText, FileSpreadsheet, FileCode2, FileTextIcon, FileSpreadsheetIcon, Filter, RotateCcw, Eye, Bookmark, Star, MessageSquare } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import {
   Sheet,
@@ -20,10 +20,13 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { usePermissions } from '@/hooks/use-permissions';
-
-const breadcrumbs: BreadcrumbItem[] = [
-  { title: 'Archivos', href: route('archivos.index') },
-];
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from '@/components/ui/navigation-menu';
 
 interface Relacion {
   id: number;
@@ -43,6 +46,11 @@ interface ArchivoRow {
   autor?: Relacion | null;
   can_update?: boolean;
   can_delete?: boolean;
+  visitas_count?: number;
+  savers_count?: number;
+  comentarios_count?: number;
+  valoraciones_count?: number;
+  valoraciones_avg_puntaje?: number | null;
 }
 
 interface ArchivosPaginated {
@@ -54,12 +62,13 @@ interface ArchivosPaginated {
 interface Filters {
   search?: string;
   autor?: string;
+  tipo_carrera_id?: number;
   carrera_id?: number;
   materia_id?: number;
   tipo_archivo_id?: number;
   plan_estudio_id?: number;
   estado_archivo_id?: number;
-  sort?: 'date' | 'title';
+  sort?: 'date' | 'title' | 'popular';
   direction?: 'asc' | 'desc';
 }
 
@@ -67,12 +76,22 @@ interface Option {
   id: number;
   nombre: string;
   carrera_id?: number | null;
+  tipo_carrera_id?: number | null;
+  plan_estudio_id?: number | null;
+  carrera_ids?: number[];
+  plan_ids?: number[];
 }
+
+const toNumber = (value: number | string | null | undefined) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 
 export default function Index({
   archivos,
   filters,
   autores = [],
+  tipoCarreras = [],
   carreras = [],
   materias = [],
   tipos = [],
@@ -82,6 +101,7 @@ export default function Index({
   archivos: ArchivosPaginated;
   filters?: Filters;
   autores?: string[];
+  tipoCarreras?: Option[];
   carreras?: Option[];
   materias?: Option[];
   tipos?: Option[];
@@ -98,17 +118,18 @@ export default function Index({
   const [filtersState, setFiltersState] = useState({
     search: filters?.search ?? '',
     autor: filters?.autor ?? '',
-    carrera_id: filters?.carrera_id ?? 0,
+    tipo_carrera_id: toNumber(filters?.tipo_carrera_id),
+    carrera_id: toNumber(filters?.carrera_id),
     carrera_text: '',
-    materia_id: filters?.materia_id ?? 0,
+    materia_id: toNumber(filters?.materia_id),
     materia_text: '',
-    tipo_archivo_id: filters?.tipo_archivo_id ?? 0,
+    tipo_archivo_id: toNumber(filters?.tipo_archivo_id),
     tipo_text: '',
-    plan_estudio_id: filters?.plan_estudio_id ?? 0,
+    plan_estudio_id: toNumber(filters?.plan_estudio_id),
     plan_text: '',
-    estado_archivo_id: filters?.estado_archivo_id ?? 0,
+    estado_archivo_id: toNumber(filters?.estado_archivo_id),
     estado_text: '',
-    sort: (filters?.sort as 'date' | 'title') ?? 'date',
+    sort: (filters?.sort as 'date' | 'title' | 'popular') ?? 'date',
     direction: (filters?.direction as 'asc' | 'desc') ?? 'desc',
   });
 
@@ -117,12 +138,13 @@ export default function Index({
       ...prev,
       search: filters?.search ?? '',
       autor: filters?.autor ?? '',
-      carrera_id: filters?.carrera_id ?? 0,
-      materia_id: filters?.materia_id ?? 0,
-      tipo_archivo_id: filters?.tipo_archivo_id ?? 0,
-      plan_estudio_id: filters?.plan_estudio_id ?? 0,
-      estado_archivo_id: filters?.estado_archivo_id ?? 0,
-      sort: (filters?.sort as 'date' | 'title') ?? 'date',
+      tipo_carrera_id: toNumber(filters?.tipo_carrera_id),
+      carrera_id: toNumber(filters?.carrera_id),
+      materia_id: toNumber(filters?.materia_id),
+      tipo_archivo_id: toNumber(filters?.tipo_archivo_id),
+      plan_estudio_id: toNumber(filters?.plan_estudio_id),
+      estado_archivo_id: toNumber(filters?.estado_archivo_id),
+      sort: (filters?.sort as 'date' | 'title' | 'popular') ?? 'date',
       direction: (filters?.direction as 'asc' | 'desc') ?? 'desc',
       // mantener los textos si coinciden con selección previa, de lo contrario vaciar
       carrera_text: filters?.carrera_id ? prev.carrera_text : '',
@@ -161,6 +183,7 @@ export default function Index({
     const cleaned = {
       search: '',
       autor: '',
+      tipo_carrera_id: 0,
       carrera_id: 0,
       carrera_text: '',
       materia_id: 0,
@@ -171,7 +194,7 @@ export default function Index({
       plan_text: '',
       estado_archivo_id: 0,
       estado_text: '',
-      sort: 'date' as 'date' | 'title',
+      sort: 'date' as 'date' | 'title' | 'popular',
       direction: 'desc' as 'asc' | 'desc',
     };
     setItems([]);
@@ -182,6 +205,7 @@ export default function Index({
   const buildParams = (state: typeof filtersState) => ({
     search: state.search || undefined,
     autor: state.autor || undefined,
+    tipo_carrera_id: state.tipo_carrera_id || undefined,
     carrera_id: state.carrera_id || undefined,
     materia_id: state.materia_id || undefined,
     tipo_archivo_id: state.tipo_archivo_id || undefined,
@@ -211,20 +235,38 @@ export default function Index({
   const filterOptions = (list: Option[], text: string) =>
     list.filter((item) => item.nombre.toLowerCase().includes(text.toLowerCase())).slice(0, 8);
 
-  const filteredCarreras = useMemo(
-    () => (filtersState.carrera_text ? filterOptions(carreras, filtersState.carrera_text) : carreras.slice(0, 8)),
-    [carreras, filtersState.carrera_text],
-  );
+  function filtrosStateSel(id: number | '', list: Option[]) {
+    if (!id) return undefined;
+    return list.find((i) => i.id === id);
+  }
+
+  const filteredCarreras = useMemo(() => {
+    const base =
+      filtersState.tipo_carrera_id && filtersState.tipo_carrera_id !== 0
+        ? carreras.filter((c) => c.tipo_carrera_id === filtersState.tipo_carrera_id)
+        : carreras;
+    return filtersState.carrera_text ? filterOptions(base, filtersState.carrera_text) : base.slice(0, 8);
+  }, [carreras, filtersState.carrera_text, filtersState.tipo_carrera_id]);
+
+  const materiasPorSeleccion = useMemo(() => {
+    if (filtersState.plan_estudio_id) {
+      return materias.filter((m) => m.plan_ids?.includes(filtersState.plan_estudio_id));
+    }
+    if (filtersState.carrera_id) {
+      return materias.filter((m) => m.carrera_ids?.includes(filtersState.carrera_id));
+    }
+    return materias;
+  }, [materias, filtersState.plan_estudio_id, filtersState.carrera_id]);
 
   const filteredMaterias = useMemo(
     () => {
-      const base = filtersState.carrera_id ? materias : materias;
+      const base = materiasPorSeleccion;
       if (filtersState.materia_text) {
         return filterOptions(base, filtersState.materia_text);
       }
       return base.slice(0, 8);
     },
-    [materias, filtersState.materia_text, filtersState.carrera_id],
+    [materiasPorSeleccion, filtersState.materia_text],
   );
 
   const filteredTipos = useMemo(
@@ -254,6 +296,7 @@ export default function Index({
   const { can } = usePermissions();
   const canViewPdf = can('view_pdf');
   const canViewExcel = can('view_excel');
+  const [materiaSearch, setMateriaSearch] = useState('');
 
   const isImage = (path?: string) => !!path && /\.(png|jpe?g|gif|webp)$/i.test(path);
   const isPdf = (path?: string) => !!path && /\.pdf$/i.test(path);
@@ -268,17 +311,306 @@ export default function Index({
     return 'secondary';
   };
 
+  const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Archivos', href: route('archivos.index') },
+  ];
+
+  const tipoCarreraOrder = (nombre?: string) => {
+    const value = nombre?.toLowerCase() ?? '';
+    if (value.includes('pregrado')) return 1;
+    if (value.includes('postgrado')) return 2;
+    if (value.includes('grado')) return 0;
+    return 99;
+  };
+
+  const tiposPermitidos = ['grado', 'pregrado', 'postgrado'];
+
+  const tiposCarreraOrdenados = [...tipoCarreras]
+    .filter((tipo) => {
+      const value = tipo.nombre?.toLowerCase() ?? '';
+      return tiposPermitidos.some((permitido) => value.includes(permitido));
+    })
+    .sort((a, b) => {
+      const diff = tipoCarreraOrder(a.nombre) - tipoCarreraOrder(b.nombre);
+      if (diff !== 0) return diff;
+      return (a.nombre ?? '').localeCompare(b.nombre ?? '');
+    });
+
+  const selectedCarrera = useMemo(
+    () => carreras.find((c) => c.id === filtersState.carrera_id),
+    [carreras, filtersState.carrera_id],
+  );
+  const selectedPlan = useMemo(
+    () => planes.find((p) => p.id === filtersState.plan_estudio_id),
+    [planes, filtersState.plan_estudio_id],
+  );
+  const selectedMateria = useMemo(
+    () => materias.find((m) => m.id === filtersState.materia_id),
+    [materias, filtersState.materia_id],
+  );
+  const selectedTipoArchivo = useMemo(
+    () => tipos.find((t) => t.id === filtersState.tipo_archivo_id),
+    [tipos, filtersState.tipo_archivo_id],
+  );
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const hasSelectorSelection = selectedPlan || selectedMateria || selectedTipoArchivo || selectedCarrera;
+
+  const planesDisponibles = useMemo(() => {
+    if (filtersState.carrera_id) {
+      return planes.filter((p) => p.carrera_id === filtersState.carrera_id);
+    }
+    return [];
+  }, [planes, filtersState.carrera_id]);
+
+  const materiasDisponibles = useMemo(() => {
+    if (!filtersState.carrera_id) return [];
+    if (filtersState.plan_estudio_id) {
+      return materias.filter((m) => m.plan_ids?.includes(filtersState.plan_estudio_id));
+    }
+    if (planesDisponibles.length === 0) {
+      return materias.filter((m) => m.carrera_ids?.includes(filtersState.carrera_id));
+    }
+    return [];
+  }, [filtersState.carrera_id, filtersState.plan_estudio_id, planesDisponibles, materias]);
+
+  const applyAndSet = (next: typeof filtersState) => {
+    setFiltersState(next);
+    applyFilters(next);
+  };
+
+  useEffect(() => {
+    setMateriaSearch('');
+  }, [filtersState.plan_estudio_id, filtersState.carrera_id]);
+
+  const handleSelectPlan = (plan: Option) => {
+    const updated = {
+      ...filtersState,
+      plan_estudio_id: plan.id,
+      plan_text: plan.nombre,
+      materia_id: 0,
+      materia_text: '',
+    };
+    applyAndSet(updated);
+  };
+
+  const handleSelectMateria = (materia: Option) => {
+    const updated = {
+      ...filtersState,
+      materia_id: materia.id,
+      materia_text: materia.nombre,
+    };
+    applyAndSet(updated);
+  };
+
+  const handleSelectTipoArchivo = (tipo: Option) => {
+    const updated = {
+      ...filtersState,
+      tipo_archivo_id: tipo.id,
+      tipo_text: tipo.nombre,
+    };
+    applyAndSet(updated);
+  };
+
+  const handleClearSeleccionCadena = () => {
+    const updated = {
+      ...filtersState,
+      plan_estudio_id: 0,
+      plan_text: '',
+      materia_id: 0,
+      materia_text: '',
+      tipo_archivo_id: 0,
+      tipo_text: '',
+    };
+    applyAndSet(updated);
+  };
+
+  const navMenu = (
+    <NavigationMenu>
+      <NavigationMenuList>
+        {tiposCarreraOrdenados.map((tipo) => {
+          const carrerasTipo = carreras.filter((c) => c.tipo_carrera_id === tipo.id);
+          return (
+            <NavigationMenuItem key={tipo.id}>
+              <NavigationMenuTrigger>{tipo.nombre}</NavigationMenuTrigger>
+              <NavigationMenuContent className="p-4">
+                <div className="grid gap-2 md:w-[320px]">
+                  {carrerasTipo.length === 0 && (
+                    <span className="text-xs text-muted-foreground">Sin carreras</span>
+                  )}
+                  {carrerasTipo.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={route('archivos.index', {
+                        tipo_carrera_id: tipo.id,
+                        carrera_id: c.id,
+                      })}
+                      className="text-sm text-foreground hover:text-primary px-2 py-1 rounded"
+                      preserveScroll
+                    >
+                      {c.nombre}
+                    </Link>
+                  ))}
+                </div>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+          );
+        })}
+      </NavigationMenuList>
+    </NavigationMenu>
+  );
+
   return (
-    <AppLayout breadcrumbs={breadcrumbs}>
+    <AppLayout breadcrumbs={breadcrumbs} navMenu={navMenu}>
       <Head title="Archivos | Listado" />
       <div className="m-4 space-y-4">
-        <Card>
-          <CardContent className="flex flex-wrap items-center justify-between gap-2">
+        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-50 via-slate-100 to-white shadow-sm backdrop-blur-sm dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 rounded-t-xl border-b border-border/60 bg-muted/40/80 px-4 py-3">
+            <CardTitle className="text-lg font-semibold">Elegí plan, materia y tipo de archivo</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectorOpen((v) => !v)}
+                className="bg-slate-900 text-white shadow-sm transition hover:bg-black hover:shadow-md hover:ring-2 hover:ring-slate-300/70 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 dark:hover:ring-2 dark:hover:ring-white/60"
+              >
+                {selectorOpen ? 'Ocultar' : 'Elegir'}
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleClearSeleccionCadena}
+                disabled={!filtersState.plan_estudio_id && !filtersState.materia_id && !filtersState.tipo_archivo_id}
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {hasSelectorSelection ? (
+                <>
+                  {selectedCarrera && <Badge variant="outline">Carrera: {selectedCarrera.nombre}</Badge>}
+                  {selectedPlan && <Badge variant="outline">Plan: {selectedPlan.nombre}</Badge>}
+                  {selectedMateria && <Badge variant="outline">Materia: {selectedMateria.nombre}</Badge>}
+                  {selectedTipoArchivo && <Badge variant="outline">Tipo: {selectedTipoArchivo.nombre}</Badge>}
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground">Sin selección activa.</span>
+              )}
+            </div>
+            {selectorOpen && (
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2 rounded-lg border border-border/60 bg-card/60 p-3">
+                  <div className="flex items-center justify-between text-sm font-semibold">
+                    <span>Plan de estudio</span>
+                    <span className="text-xs text-muted-foreground">{planesDisponibles.length} op.</span>
+                  </div>
+                  {!filtersState.carrera_id && (
+                    <p className="text-xs text-muted-foreground">Primero elegí una carrera.</p>
+                  )}
+                  {filtersState.carrera_id && planesDisponibles.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Esta carrera no tiene planes cargados.</p>
+                  )}
+                  {planesDisponibles.length > 0 && (
+                    <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                      {planesDisponibles.map((p) => (
+                        <Button
+                          key={p.id}
+                          variant={p.id === filtersState.plan_estudio_id ? 'secondary' : 'ghost'}
+                          className="w-full justify-start transition hover:border-primary/40 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-primary/50"
+                          onClick={() => handleSelectPlan(p)}
+                        >
+                          {p.nombre}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2 rounded-lg border border-border/60 bg-card/60 p-3">
+                  <div className="flex items-center justify-between text-sm font-semibold">
+                    <span>Materia</span>
+                    <span className="text-xs text-muted-foreground">
+                      {materiasDisponibles.length} op.
+                    </span>
+                  </div>
+                  {!filtersState.carrera_id && (
+                    <p className="text-xs text-muted-foreground">Elegí primero una carrera y un plan.</p>
+                  )}
+                  {filtersState.carrera_id && planesDisponibles.length > 0 && !filtersState.plan_estudio_id && (
+                    <p className="text-xs text-muted-foreground">Seleccioná un plan para ver sus materias.</p>
+                  )}
+                  {filtersState.carrera_id && planesDisponibles.length === 0 && materiasDisponibles.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No hay materias disponibles.</p>
+                  )}
+                  {filtersState.plan_estudio_id && materiasDisponibles.length === 0 && planesDisponibles.length > 0 && (
+                    <p className="text-xs text-muted-foreground">Este plan no tiene materias cargadas.</p>
+                  )}
+                  {materiasDisponibles.length > 0 && (
+                    <Input
+                      placeholder="Buscar materia..."
+                      value={materiaSearch}
+                      onChange={(e) => setMateriaSearch(e.target.value)}
+                      className="h-9"
+                    />
+                  )}
+                  {materiasDisponibles.length > 0 && (
+                  <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                    {materiasDisponibles
+                      .filter((m) => m.nombre.toLowerCase().includes(materiaSearch.toLowerCase()))
+                      .map((m) => (
+                      <Button
+                        key={m.id}
+                        variant={m.id === filtersState.materia_id ? 'secondary' : 'ghost'}
+                        className="w-full justify-start transition hover:border-primary/40 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-primary/50"
+                        onClick={() => handleSelectMateria(m)}
+                      >
+                        {m.nombre}
+                      </Button>
+                    ))}
+                    {materiasDisponibles.filter((m) => m.nombre.toLowerCase().includes(materiaSearch.toLowerCase())).length === 0 && (
+                      <p className="text-xs text-muted-foreground px-1">No hay coincidencias.</p>
+                    )}
+                  </div>
+                  )}
+                </div>
+                <div className="space-y-2 rounded-lg border border-border/60 bg-card/60 p-3">
+                  <div className="flex items-center justify-between text-sm font-semibold">
+                    <span>Tipo de archivo</span>
+                    <span className="text-xs text-muted-foreground">{tipos.length} op.</span>
+                  </div>
+                  {tipos.length > 0 ? (
+                    <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                      {tipos.map((t) => (
+                        <Button
+                          key={t.id}
+                          variant={t.id === filtersState.tipo_archivo_id ? 'secondary' : 'ghost'}
+                          className="w-full justify-start transition hover:border-primary/40 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-primary/50"
+                          onClick={() => handleSelectTipoArchivo(t)}
+                        >
+                          {t.nombre}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No hay tipos de archivo disponibles.</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {selectedMateria && (
+              <span className="text-xs text-muted-foreground block">
+                Mostrando archivos para {selectedMateria.nombre}.
+              </span>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-50 via-slate-100 to-white shadow-sm backdrop-blur-sm dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+          <CardContent className="flex flex-wrap items-center justify-between gap-2 text-slate-900 dark:text-slate-50">
             <div>
               <CardTitle className="text-lg font-semibold">Archivos cargados</CardTitle>
-              <p className="text-sm text-muted-foreground">Explora y administra los archivos subidos.</p>
+              <p className="text-sm text-slate-700 dark:text-slate-200">Explora y administra los archivos subidos.</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-end gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Input
                   placeholder="Buscar por título..."
@@ -289,14 +621,14 @@ export default function Index({
                       search: e.target.value,
                     }))
                   }
-                  className="w-56"
+                  className="w-56 bg-white text-neutral-900 border border-neutral-300 placeholder:text-neutral-500 dark:bg-neutral-900 dark:text-white dark:border-neutral-700 dark:placeholder:text-neutral-400"
                 />
                 <select
                   className="w-48 rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={`${filtersState.sort}_${filtersState.direction}`}
                   onChange={(e) => {
                     const value = e.target.value;
-                    const [sort, direction] = value.split('_') as ['date' | 'title', 'asc' | 'desc'];
+                    const [sort, direction] = value.split('_') as ['date' | 'title' | 'popular', 'asc' | 'desc'];
                     const updated = { ...filtersState, sort, direction };
                     setFiltersState(updated);
                     applyFilters(updated);
@@ -306,10 +638,15 @@ export default function Index({
                   <option value="date_asc">Más antiguos</option>
                   <option value="title_asc">Título A-Z</option>
                   <option value="title_desc">Título Z-A</option>
+                  <option value="popular_desc">Más populares</option>
+                  <option value="popular_asc">Menos populares</option>
                 </select>
                 <Sheet>
                   <SheetTrigger asChild>
-                    <Button variant="outline">
+                    <Button
+                      variant="outline"
+                      className="bg-white text-neutral-900 border border-neutral-300 hover:bg-neutral-100 dark:bg-neutral-900 dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-800"
+                    >
                       <Filter className="mr-2 h-4 w-4" />
                       Filtros
                     </Button>
@@ -590,7 +927,7 @@ export default function Index({
                 </Sheet>
                 <Button
                   variant="secondary"
-                  className="bg-white text-slate-900 hover:bg-muted"
+                  className="bg-slate-900 text-white shadow-sm transition hover:bg-slate-800 hover:shadow-md hover:ring-2 hover:ring-slate-300/70 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 dark:hover:ring-2 dark:hover:ring-slate-400/70"
                   type="button"
                   onClick={clearFilters}
                 >
@@ -602,7 +939,7 @@ export default function Index({
                     <Button
                       variant="outline"
                       size="icon"
-                      className="border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                      className="border-red-200 bg-white text-red-600 hover:bg-red-100 hover:text-red-700 dark:border-red-400/70 dark:bg-neutral-900 dark:text-red-200 dark:hover:bg-neutral-800"
                     >
                       <FileTextIcon className="h-4 w-4" />
                     </Button>
@@ -613,15 +950,21 @@ export default function Index({
                     <Button
                       variant="outline"
                       size="icon"
-                      className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                      className="border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-400/70 dark:bg-neutral-900 dark:text-emerald-200 dark:hover:bg-neutral-800"
                     >
                       <FileSpreadsheetIcon className="h-4 w-4" />
                     </Button>
                   </a>
                 )}
-                <Link href={route('archivos.create')}>
-                  <Button>Subir archivo</Button>
-                </Link>
+                {can('create_archivo') && (
+                  <Link href={route('archivos.create')} className="ml-auto self-end">
+                    <Button
+                      className="bg-sky-500 text-white shadow-lg shadow-sky-500/30 transition hover:bg-sky-600 hover:shadow-sky-500/40 dark:bg-sky-400 dark:text-slate-900 dark:hover:bg-sky-300"
+                    >
+                      Subir archivo
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
           </CardContent>
@@ -629,90 +972,108 @@ export default function Index({
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            <Card key={item.id} className="overflow-hidden">
-            <CardHeader className="p-0">
-              {item.thumbnail_path ? (
-                <img
-                  src={`/storage/${item.thumbnail_path}`}
-                  alt={`Miniatura de ${item.titulo}`}
-                  className="h-40 w-full object-cover"
-                />
-              ) : isImage(item.file_path) ? (
-                <img
-                  src={`/storage/${item.file_path}`}
-                  alt={item.titulo}
-                  className="h-40 w-full object-cover"
-                />
-              ) : isPdf(item.file_path) ? (
-                <div className="h-40 w-full bg-muted flex items-center justify-center text-muted-foreground text-sm">
-                  <FileText className="h-6 w-6" />
-                  <span className="ml-2">PDF</span>
-                </div>
-              ) : (
-                <div className="h-40 w-full bg-muted flex items-center justify-center text-muted-foreground text-sm">
-                  {isSpreadsheet(item.file_path) && (
-                    <div className="flex items-center gap-2">
-                      <FileSpreadsheet className="h-6 w-6" />
-                      <span>Hoja de cálculo</span>
+            <Card
+              key={item.id}
+              className="overflow-hidden rounded-xl border-2 border-border/70 bg-gradient-to-br from-slate-100 via-slate-50 to-white text-slate-900 shadow-sm transition hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:from-sky-100 hover:via-slate-50 hover:to-white dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50 dark:hover:from-sky-900 dark:hover:via-neutral-950 dark:hover:to-neutral-950"
+            >
+              <Link
+                href={route('archivos.show', { archivo: item.id, ...exportParams })}
+                className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <CardHeader className="p-0">
+                  {item.thumbnail_path ? (
+                    <img
+                      src={`/storage/${item.thumbnail_path}`}
+                      alt={`Miniatura de ${item.titulo}`}
+                      className="h-40 w-full object-cover transition duration-500 hover:scale-[1.01]"
+                    />
+                  ) : isImage(item.file_path) ? (
+                    <img
+                      src={`/storage/${item.file_path}`}
+                      alt={item.titulo}
+                      className="h-40 w-full object-cover transition duration-500 hover:scale-[1.01]"
+                    />
+                  ) : isPdf(item.file_path) ? (
+                    <div className="flex h-40 w-full items-center justify-center bg-muted text-sm text-muted-foreground">
+                      <FileText className="h-6 w-6" />
+                      <span className="ml-2">PDF</span>
+                    </div>
+                  ) : (
+                    <div className="flex h-40 w-full items-center justify-center bg-muted text-sm text-muted-foreground">
+                      {isSpreadsheet(item.file_path) && (
+                        <div className="flex items-center gap-2">
+                          <FileSpreadsheet className="h-6 w-6" />
+                          <span>Hoja de cálculo</span>
+                        </div>
+                      )}
+                      {isDoc(item.file_path) && (
+                        <div className="flex items-center gap-2">
+                          <FileCode2 className="h-6 w-6" />
+                          <span>Documento</span>
+                        </div>
+                      )}
+                      {!item.file_path && <span>Sin archivo</span>}
+                      {item.file_path &&
+                        !isSpreadsheet(item.file_path) &&
+                        !isDoc(item.file_path) && <span>Vista previa no disponible</span>}
                     </div>
                   )}
-                  {isDoc(item.file_path) && (
-                    <div className="flex items-center gap-2">
-                      <FileCode2 className="h-6 w-6" />
-                      <span>Documento</span>
-                    </div>
-                  )}
-                  {!item.file_path && <span>Sin archivo</span>}
-                  {item.file_path &&
-                    !isSpreadsheet(item.file_path) &&
-                    !isDoc(item.file_path) && <span>Vista previa no disponible</span>}
-                </div>
-              )}
-            </CardHeader>
-              <CardContent className="space-y-1 py-3 px-4">
-                <CardTitle className="text-base">{item.titulo}</CardTitle>
-                {item.descripcion && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">{item.descripcion}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Materia: <span className="font-medium">{item.materia?.nombre ?? '—'}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Tipo: <span className="font-medium">{item.tipo?.nombre ?? '—'}</span>
-                </p>
-                <div className="flex items-center gap-2">
-                  <Badge variant={estadoColor(item.estado?.nombre) as any}>
-                    {item.estado?.nombre ?? 'Sin estado'}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">Autor: {item.autor?.name ?? '—'}</span>
-                </div>
-              </CardContent>
-            <CardFooter className="flex justify-between px-4 pb-4">
-              <Link href={route('archivos.show', item.id)}>
-                <Button size="sm" variant="outline">
-                  Ver
-                </Button>
+                </CardHeader>
+                <CardContent className="space-y-2 py-4 px-4">
+                  <CardTitle className="text-center text-base font-semibold leading-snug text-slate-900 dark:text-slate-50">{item.titulo}</CardTitle>
+                  <div className="text-center text-xs text-slate-700 dark:text-slate-200">
+                    <span className="font-medium">{item.materia?.nombre ?? '—'}</span>
+                    <span className="mx-1.5">•</span>
+                    <span className="font-medium">{item.tipo?.nombre ?? '—'}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-700 dark:text-slate-200">
+                    {(can('state_archivo') || item.can_update || item.autor?.id === page.props.auth.user?.id) && (
+                      <Badge variant={estadoColor(item.estado?.nombre) as any}>
+                        {item.estado?.nombre ?? 'Sin estado'}
+                      </Badge>
+                    )}
+                    <span>Autor: {item.autor?.name ?? '—'}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-700 dark:text-slate-200">
+                    <span className="inline-flex items-center gap-1" title="Visitas">
+                      <Eye className="h-3 w-3" /> {item.visitas_count ?? 0}
+                    </span>
+                    <span className="inline-flex items-center gap-1" title="Valoraciones">
+                      <Star className="h-3 w-3" />
+                      {Number(item.valoraciones_avg_puntaje ?? 0).toFixed(1)} ({item.valoraciones_count ?? 0})
+                    </span>
+                    <span className="inline-flex items-center gap-1" title="Comentarios">
+                      <MessageSquare className="h-3 w-3" /> {item.comentarios_count ?? 0}
+                    </span>
+                    <span className="inline-flex items-center gap-1" title="Guardados">
+                      <Bookmark className="h-3 w-3" /> {item.savers_count ?? 0}
+                    </span>
+                  </div>
+                </CardContent>
               </Link>
-              <div className="flex gap-2">
-                  {item.can_update && (
+              <CardFooter className="flex justify-end gap-2 px-4 pb-4">
+                {item.can_update && (
                   <Link href={route('archivos.edit', item.id)}>
-                    <Button size="sm" variant="secondary">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="bg-white text-neutral-900 border border-neutral-300 hover:bg-neutral-100 dark:bg-neutral-900 dark:text-white dark:border-neutral-700 dark:hover:bg-neutral-800"
+                    >
                       Editar
                     </Button>
                   </Link>
-                  )}
-                  {item.can_delete && (
-                    <ConfirmDelete
-                      disabled={processing}
-                      onConfirm={() => destroy(route('archivos.destroy', item.id))}
-                      description="El archivo se eliminará definitivamente."
-                    >
-                      <Button size="sm" variant="destructive" disabled={processing}>
-                        Eliminar
-                      </Button>
-                    </ConfirmDelete>
-                  )}
-                </div>
+                )}
+                {item.can_delete && (
+                  <ConfirmDelete
+                    disabled={processing}
+                    onConfirm={() => destroy(route('archivos.destroy', item.id))}
+                    description="El archivo se eliminará definitivamente."
+                  >
+                    <Button size="sm" variant="destructive" disabled={processing}>
+                      Eliminar
+                    </Button>
+                  </ConfirmDelete>
+                )}
               </CardFooter>
             </Card>
           ))}

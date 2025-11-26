@@ -82,7 +82,21 @@ class ValoracionController extends Controller
 
     public function store(StoreValoracionRequest $request)
     {
-        $valoracion = Valoracion::create($request->validated());
+        $data = $request->validated();
+        $data['user_id'] = Auth::id();
+
+        $valoracion = Valoracion::where('archivo_id', $data['archivo_id'])
+            ->where('user_id', $data['user_id'])
+            ->first();
+
+        if ($valoracion) {
+            $valoracion->update([
+                'puntaje' => $data['puntaje'],
+                'comentario' => $data['comentario'] ?? null,
+            ]);
+        } else {
+            $valoracion = Valoracion::create($data);
+        }
 
         $autorArchivo = $valoracion->archivo?->autor;
         if (config('mail.notifications_enabled') && $autorArchivo && $autorArchivo->email) {
@@ -102,8 +116,7 @@ class ValoracionController extends Controller
             ],
         ]);
 
-        return redirect()->route('valoraciones.index')
-            ->with('success', "Valoración #{$valoracion->id} creada.");
+        return redirect()->back()->with('success', "Valoración guardada.");
     }
 
     public function edit(Valoracion $valoracion)
@@ -117,17 +130,18 @@ class ValoracionController extends Controller
 
     public function update(UpdateValoracionRequest $request, Valoracion $valoracion)
     {
-        $valoracion->update($request->validated());
+        $data = $request->validated();
+        $data['user_id'] = Auth::id();
 
-        return redirect()->route('valoraciones.index')
-            ->with('success', "Valoración #{$valoracion->id} actualizada.");
+        $valoracion->update($data);
+
+        return redirect()->back()->with('success', "Valoración #{$valoracion->id} actualizada.");
     }
 
     public function destroy(Valoracion $valoracion)
     {
         $valoracion->delete();
 
-        return redirect()->route('valoraciones.index')
-            ->with('success', "Valoración #{$valoracion->id} eliminada.");
+        return redirect()->back()->with('success', "Valoración #{$valoracion->id} eliminada.");
     }
 }

@@ -22,8 +22,8 @@ interface Option {
 
 export default function Create({ usuarios }: { usuarios: Option[] }) {
   const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Notificaciones', href: route('notificaciones.index') },
-    { title: 'Crear', href: route('notificaciones.create') },
+    { title: 'Notificaciones', href: route('admin.notificaciones.index') },
+    { title: 'Crear', href: route('admin.notificaciones.create') },
   ];
 
   const { data, setData, post, processing, errors } = useForm({
@@ -44,7 +44,7 @@ export default function Create({ usuarios }: { usuarios: Option[] }) {
         return;
       }
     }
-    post(route('notificaciones.store'), {
+    post(route('admin.notificaciones.store'), {
       data: {
         ...data,
         data: parsed,

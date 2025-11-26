@@ -28,7 +28,7 @@ export default function Index({ roles }: { roles: Paginated }) {
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Roles" />
       <div className="m-4 space-y-4">
-        <Card>
+        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
           <CardContent className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <CardTitle className="text-lg font-semibold">Roles</CardTitle>
@@ -42,7 +42,7 @@ export default function Index({ roles }: { roles: Paginated }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
           <CardContent className="space-y-4">
             <div className="overflow-hidden rounded">
               <Table>
@@ -60,13 +60,15 @@ export default function Index({ roles }: { roles: Paginated }) {
                     <TableRow key={role.id}>
                       <TableCell>{role.id}</TableCell>
                       <TableCell>{role.name}</TableCell>
-                      <TableCell className="space-x-1">
+                      <TableCell className="align-top">
                         {role.permissions?.length ? (
-                          role.permissions.map((p, idx) => (
-                            <span key={idx} className="rounded bg-muted px-2 py-1 text-xs">
-                              {typeof p === 'string' ? p : p.name}
-                            </span>
-                          ))
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-1 w-fit">
+                            {role.permissions.map((p, idx) => (
+                              <span key={idx} className="rounded bg-muted px-2 py-1 text-xs">
+                                {typeof p === 'string' ? p : p.name}
+                              </span>
+                            ))}
+                          </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">Sin permisos</span>
                         )}

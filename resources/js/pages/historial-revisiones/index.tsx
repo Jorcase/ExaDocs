@@ -228,19 +228,20 @@ export default function Index({
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Historial de revisiones" />
       <div className="m-4 space-y-4">
-        <ListSection
-          title="Historial de revisiones"
-          description="Registra cuándo y quién modificó el estado de cada archivo."
-          actions={
-            <>
-              <Link href={route('historial-revisiones.create')}>
-                <Button>Registrar revisión</Button>
-              </Link>
-            </>
-          }
-        />
-
-        <Card>
+        <section className="rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
+          <ListSection
+            title="Historial de revisiones"
+            description="Registra cuándo y quién modificó el estado de cada archivo."
+            actions={
+              <>
+                <Link href={route('historial-revisiones.create')}>
+                  <Button>Registrar revisión</Button>
+                </Link>
+              </>
+            }
+          />
+        </section>
+        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
           <CardContent className="space-y-4">
             <DataTable
               columns={columns}

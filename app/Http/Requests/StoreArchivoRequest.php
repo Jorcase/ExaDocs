@@ -33,7 +33,7 @@ class StoreArchivoRequest extends FormRequest
                 'required',
                 'file',
                 'max:51200', // 50MB
-                'mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx,csv',
+                'mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx,csv,ppt,pptx,txt,md',
             ],
             'metadata' => ['nullable', 'array'],
             'observaciones_admin' => ['nullable', 'string'],

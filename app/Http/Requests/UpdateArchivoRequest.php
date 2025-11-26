@@ -33,10 +33,35 @@ class UpdateArchivoRequest extends FormRequest
                 'nullable',
                 'file',
                 'max:51200', // 50MB
-                'mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx,csv',
+                'mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx,csv,ppt,pptx,txt,md',
             ],
             'metadata' => ['nullable', 'array'],
             'observaciones_admin' => ['nullable', 'string'],
         ];
+    }
+
+    /**
+     * Forzamos defaults de campos no editables si no vienen en la request.
+     */
+    protected function prepareForValidation(): void
+    {
+        $archivo = $this->route('archivo');
+        if (!$archivo) {
+            return;
+        }
+
+        $this->merge([
+            'carrera_id' => $this->input(
+                'carrera_id',
+                $archivo->planEstudio?->carrera_id
+                    ?? optional($archivo->materia?->carreras?->first())->id
+            ),
+            'materia_id' => $this->input('materia_id', $archivo->materia_id),
+            'plan_estudio_id' => $this->input('plan_estudio_id', $archivo->plan_estudio_id),
+            'tipo_archivo_id' => $this->input('tipo_archivo_id', $archivo->tipo_archivo_id),
+            'estado_archivo_id' => $this->input('estado_archivo_id', $archivo->estado_archivo_id),
+            'titulo' => $this->input('titulo', $archivo->titulo),
+            'descripcion' => $this->input('descripcion', $archivo->descripcion),
+        ]);
     }
 }

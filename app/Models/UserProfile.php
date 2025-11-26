@@ -11,11 +11,23 @@ class UserProfile extends Model
 
     protected $fillable = [
         'user_id',
+        'nombre_completo',
         'documento',
         'carrera_principal_id',
         'telefono',
         'avatar_path',
         'bio',
+        'perfil_completo',
+        'perfil_completado_en',
+    ];
+
+    protected $appends = [
+        'avatar_url',
+    ];
+
+    protected $casts = [
+        'perfil_completo' => 'boolean',
+        'perfil_completado_en' => 'datetime',
     ];
 
     public function user()

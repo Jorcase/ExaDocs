@@ -93,4 +93,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Auditoria::class);
     }
+
+    public function savedArchivos()
+    {
+        return $this->belongsToMany(Archivo::class, 'archivo_user_saved')->withTimestamps();
+    }
 }

@@ -9,7 +9,7 @@ interface ListSectionProps {
 
 export function ListSection({ title, description, actions }: ListSectionProps) {
   return (
-    <Card>
+    <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white text-slate-900 shadow-sm dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
       <CardContent className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <CardTitle className="text-lg font-semibold">{title}</CardTitle>

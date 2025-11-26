@@ -8,9 +8,11 @@ use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvid
 use App\Models\Carrera;
 use App\Models\Materia;
 use App\Models\Plan_Estudio;
+use App\Models\UserProfile;
 use App\Policies\CarreraPolicy;
 use App\Policies\MateriaPolicy;
 use App\Policies\PlanEstudioPolicy;
+use App\Policies\UserProfilePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -24,6 +26,7 @@ class AuthServiceProvider extends ServiceProvider
         Carrera::class => CarreraPolicy::class,
         Materia::class => MateriaPolicy::class,
         Plan_Estudio::class => PlanEstudioPolicy::class,
+        UserProfile::class => UserProfilePolicy::class,
     ];
 
     /**

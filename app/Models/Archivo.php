@@ -25,6 +25,7 @@ class Archivo extends Model
         'metadata',
         'observaciones_admin',
         'publicado_en',
+        'visitas_count',
     ];
 
     protected $casts = [
@@ -77,5 +78,10 @@ class Archivo extends Model
     public function valoraciones()
     {
         return $this->hasMany(Valoracion::class);
+    }
+
+    public function savers()
+    {
+        return $this->belongsToMany(User::class, 'archivo_user_saved')->withTimestamps();
     }
 }

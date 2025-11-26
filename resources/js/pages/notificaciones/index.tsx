@@ -6,6 +6,7 @@ import { ConfirmDelete } from '@/components/confirm-delete';
 import { route } from 'ziggy-js';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import Pagination from '@/components/pagination';
 
 interface NotificacionRow {
   id: number;
@@ -21,7 +22,7 @@ interface Paginated {
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-  { title: 'Notificaciones', href: route('notificaciones.index') },
+  { title: 'Notificaciones (moderación)', href: route('admin.notificaciones.index') },
 ];
 
 export default function Index({ notificaciones }: { notificaciones: Paginated }) {
@@ -30,22 +31,25 @@ export default function Index({ notificaciones }: { notificaciones: Paginated })
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Notificaciones" />
-      <div className="m-4 space-y-4">
+      <section className="m-4 space-y-4 rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Notificaciones</h1>
-          <Link href={route('notificaciones.create')}>
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">Notificaciones</h1>
+            <p className="text-sm text-slate-700 dark:text-slate-200">Gestiona las notificaciones creadas para los usuarios.</p>
+          </div>
+          <Link href={route('admin.notificaciones.create')}>
             <Button>Crear notificación</Button>
           </Link>
         </div>
-        <div className="overflow-hidden rounded border">
+        <div className="overflow-hidden rounded-xl border border-border/60 bg-white/50 dark:bg-white/5">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Usuario</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Leído</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
+                <TableHead className="text-slate-900 dark:text-slate-100">ID</TableHead>
+                <TableHead className="text-slate-900 dark:text-slate-100">Usuario</TableHead>
+                <TableHead className="text-slate-900 dark:text-slate-100">Tipo</TableHead>
+                <TableHead className="text-slate-900 dark:text-slate-100">Leído</TableHead>
+                <TableHead className="text-right text-slate-900 dark:text-slate-100">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -56,20 +60,20 @@ export default function Index({ notificaciones }: { notificaciones: Paginated })
                   <TableCell className="capitalize">{n.tipo}</TableCell>
                   <TableCell>
                     {n.leido_en ? (
-                      <Badge variant="success">Leído</Badge>
+                      <Badge variant="default">Leído</Badge>
                     ) : (
                       <Badge variant="secondary">Pendiente</Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Link href={route('notificaciones.edit', n.id)}>
+                    <Link href={route('admin.notificaciones.edit', n.id)}>
                       <Button size="sm" variant="secondary">
                         Editar
                       </Button>
                     </Link>
                     <ConfirmDelete
                       disabled={processing}
-                      onConfirm={() => destroy(route('notificaciones.destroy', n.id))}
+                      onConfirm={() => destroy(route('admin.notificaciones.destroy', n.id))}
                       description="La notificación se eliminará definitivamente."
                     >
                       <Button size="sm" variant="destructive" disabled={processing}>
@@ -89,7 +93,10 @@ export default function Index({ notificaciones }: { notificaciones: Paginated })
             </TableBody>
           </Table>
         </div>
-      </div>
+        <div className="flex justify-end">
+          <Pagination links={notificaciones.links} />
+        </div>
+      </section>
     </AppLayout>
   );
 }

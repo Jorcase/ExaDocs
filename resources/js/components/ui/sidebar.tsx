@@ -239,7 +239,7 @@ function Sidebar({
       >
         <div
           data-sidebar="sidebar"
-          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+          className="bg-[#edf1f7] text-sidebar-foreground flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:border-sidebar-border dark:bg-[#0b0c0f]/90"
         >
           {children}
         </div>
@@ -304,12 +304,19 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "bg-background relative flex max-w-full min-h-svh flex-1 flex-col",
+        "relative flex max-w-full min-h-svh flex-1 flex-col overflow-hidden",
+        "bg-[#c9def7] dark:bg-background",
         "peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4)))] md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-0",
         className
       )}
       {...props}
-    />
+    >
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute top-[-12%] left-[-18%] h-[380px] w-[380px] rounded-full blur-3xl bg-blue-400/12 dark:bg-blue-500/18" />
+        <div className="absolute bottom-[-12%] right-[-16%] h-[320px] w-[320px] rounded-full blur-3xl bg-purple-400/12 dark:bg-purple-500/18" />
+      </div>
+      {props.children}
+    </main>
   )
 }
 

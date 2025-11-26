@@ -162,34 +162,6 @@ export default function Index({
         cell: ({ getValue }) => getValue<string>() || '—',
       },
       {
-        accessorKey: 'documento',
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            className="px-0 font-semibold"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Documento
-            <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
-          </Button>
-        ),
-        cell: ({ getValue }) => getValue<string>() || '—',
-      },
-      {
-        accessorKey: 'telefono',
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            className="px-0 font-semibold"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Teléfono
-            <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
-          </Button>
-        ),
-        cell: ({ getValue }) => getValue<string>() || '—',
-      },
-      {
         id: 'carrera',
         accessorFn: (row) => row.carrera?.nombre ?? '',
         header: ({ column }) => (
@@ -212,6 +184,11 @@ export default function Index({
           const perfil = row.original;
           return (
             <div className="flex w-full justify-end gap-2">
+              <Link href={route('perfiles.show', perfil.id)}>
+                <Button size="sm" variant="outline">
+                  Ver
+                </Button>
+              </Link>
               <Link href={route('perfiles.edit', perfil.id)}>
                 <Button size="sm" variant="secondary">
                   Editar
@@ -238,17 +215,18 @@ export default function Index({
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Perfiles de usuario" />
       <div className="m-4 space-y-4">
-        <ListSection
-          title="Perfiles"
-          description="Gestiona la información de usuarios y su carrera principal."
-          actions={
-            <Link href={route('perfiles.create')}>
-              <Button>Crear perfil</Button>
-            </Link>
-          }
-        />
-
-        <Card>
+        <section className="rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
+            <ListSection
+              title="Perfiles"
+              description="Gestiona la información de usuarios y su carrera principal."
+              actions={
+                <Link href={route('perfiles.create')}>
+                  <Button>Crear perfil</Button>
+                </Link>
+              }
+            />
+        </section>
+        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
           <CardContent className="space-y-4">
             <DataTable
               columns={columns}

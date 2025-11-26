@@ -17,6 +17,7 @@
       <tr>
         <th>ID</th>
         <th>Nombre</th>
+        <th>Tipo</th>
         <th>Carreras</th>
         <th>Planes</th>
       </tr>
@@ -26,6 +27,7 @@
         <tr>
           <td>{{ $materia->id }}</td>
           <td>{{ $materia->nombre }}</td>
+          <td>{{ $materia->tipo }}</td>
           <td>{{ $materia->carreras->pluck('nombre')->join(', ') }}</td>
           <td>{{ $materia->planesEstudio->pluck('nombre')->join(', ') }}</td>
         </tr>

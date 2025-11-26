@@ -36,8 +36,8 @@ export default function Edit({
   usuarios: Option[];
 }) {
   const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Notificaciones', href: route('notificaciones.index') },
-    { title: `Editar #${notificacion.id}`, href: route('notificaciones.edit', notificacion.id) },
+    { title: 'Notificaciones', href: route('admin.notificaciones.index') },
+    { title: `Editar #${notificacion.id}`, href: route('admin.notificaciones.edit', notificacion.id) },
   ];
 
   const { data, setData, put, processing, errors } = useForm({
@@ -58,7 +58,7 @@ export default function Edit({
         return;
       }
     }
-    put(route('notificaciones.update', notificacion.id), {
+    put(route('admin.notificaciones.update', notificacion.id), {
       data: {
         ...data,
         data: parsed,
