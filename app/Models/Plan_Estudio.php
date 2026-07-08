@@ -19,12 +19,14 @@ class Plan_Estudio extends Model
         'estado',
         'vigente_desde',
         'vigente_hasta',
+        'optativas_requeridas',
     ];
 
     protected $casts = [
         'vigente_desde' => 'date',
         'vigente_hasta' => 'date',
         'anio_plan' => 'integer',
+        'optativas_requeridas' => 'integer',
     ];
 
     public function carrera()

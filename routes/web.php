@@ -24,11 +24,17 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EstadisticasController;
 
+use App\Http\Controllers\ActiveCarreraController;
+use App\Http\Controllers\MateriaProgresoController;
+
 Route::get('/', [CarouselController::class, 'index'])->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('mis-cosas', [ArchivoController::class, 'myStuff'])->name('mis-cosas')->middleware('auth');
+    Route::post('active-carrera', [ActiveCarreraController::class, 'store'])->name('active-carrera.store');
+    Route::post('progreso', [MateriaProgresoController::class, 'update'])->name('progreso.update');
+    Route::get('progreso/report', [MateriaProgresoController::class, 'generateReport'])->name('progreso.report');
 
     // Carrusel (moderación/catalogos)
     Route::get('carousel', [CarouselController::class, 'adminList'])->name('carousel.index')->can('view_catalogos');
@@ -125,7 +131,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Reportes de contenido
     Route::get('reportes', [ReporteContenidoController::class, 'index'])->name('reportes.index')->can('view_moderacion');
     Route::get('reportes/create', [ReporteContenidoController::class, 'create'])->name('reportes.create')->can('view_moderacion');
-    Route::post('reportes', [ReporteContenidoController::class, 'store'])->name('reportes.store')->can('view_moderacion');
+    Route::post('reportes', [ReporteContenidoController::class, 'store'])->name('reportes.store');
     Route::get('reportes/edit/{reporte}', [ReporteContenidoController::class, 'edit'])->name('reportes.edit')->can('view_moderacion');
     Route::put('reportes/{reporte}', [ReporteContenidoController::class, 'update'])->name('reportes.update')->can('view_moderacion');
     Route::delete('reportes/{reporte}', [ReporteContenidoController::class, 'destroy'])->name('reportes.destroy')->can('view_moderacion');

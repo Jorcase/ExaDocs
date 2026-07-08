@@ -13,10 +13,14 @@ pauseOnHover = true,
 }) => {
 const [currentIndex, setCurrentIndex] = useState<number>(0);
 const [isPaused, setIsPaused] = useState<boolean>(false);
-const next = (): void =>
-setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
-const prev = (): void =>
-setCurrentIndex((prevIndex) => (prevIndex - 1 + images.length) % images.length);
+const next = (): void => {
+  if (!images || images.length === 0) return;
+  setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
+};
+const prev = (): void => {
+  if (!images || images.length === 0) return;
+  setCurrentIndex((prevIndex) => (prevIndex - 1 + images.length) % images.length);
+};
 // Autoplay logic
 useEffect(() => {
 if (!autoPlay || isPaused) return;

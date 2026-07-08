@@ -26,10 +26,9 @@ class ArchivosExport implements FromCollection, WithHeadings, WithMapping, Shoul
     public function headings(): array
     {
         return [
-            'ID',
             'Título',
             'Autor',
-            'Carrera',
+            'Código Carrera',
             'Materia',
             'Plan de estudio',
             'Tipo de archivo',
@@ -49,14 +48,13 @@ class ArchivosExport implements FromCollection, WithHeadings, WithMapping, Shoul
      */
     public function map($archivo): array
     {
-        $carreraNombre = $archivo->planEstudio?->carrera?->nombre
-            ?? $archivo->materia?->carreras?->first()?->nombre;
+        $carreraCodigo = $archivo->planEstudio?->carrera?->codigo
+            ?? optional($archivo->materia?->carreras?->first())->codigo;
 
         return [
-            $archivo->id,
             $archivo->titulo,
             $archivo->autor?->name,
-            $carreraNombre,
+            $carreraCodigo,
             $archivo->materia?->nombre,
             $archivo->planEstudio?->nombre,
             $archivo->tipo?->nombre,

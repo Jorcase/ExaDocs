@@ -24,10 +24,30 @@ class NotificacionController extends Controller
         ]);
     }
 
-    public function adminIndex()
+    public function adminIndex(Request $request)
     {
+        $search = $request->input('search');
+        $query = Notificacion::with(['user:id,name', 'actor:id,name']);
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('titulo', 'like', "%{$search}%")
+                  ->orWhere('mensaje', 'like', "%{$search}%")
+                  ->orWhere('tipo', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($qu) use ($search) {
+                      $qu->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('actor', function($qa) use ($search) {
+                      $qa->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
         return inertia('notificaciones/index', [
-            'notificaciones' => Notificacion::with('user:id,name')->latest()->paginate(10),
+            'notificaciones' => $query->latest()->paginate(10)->withQueryString(),
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

@@ -14,6 +14,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import { type FormEvent } from 'react';
+import { FormLayout } from '@/components/form-layout';
 
 interface Option {
   id: number;
@@ -49,66 +50,85 @@ export default function Create({ usuarios }: { usuarios: Option[] }) {
         ...data,
         data: parsed,
       },
-    });
+    } as any);
   };
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Crear notificación" />
-      <div className="w-full max-w-2xl p-4 space-y-4">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Usuario</Label>
-            <Select
-              value={data.user_id === '' ? '' : String(data.user_id)}
-              onValueChange={(v) => setData('user_id', Number(v))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccioná un usuario" />
-              </SelectTrigger>
-              <SelectContent>
-                {usuarios.map((u) => (
-                  <SelectItem key={u.id} value={String(u.id)}>
-                    {u.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.user_id && <p className="text-sm text-destructive">{errors.user_id}</p>}
-          </div>
+      <div className="mx-auto max-w-7xl px-4 py-8 animate-in fade-in duration-300">
+        <FormLayout
+          onSubmit={handleSubmit}
+          processing={processing}
+          cancelHref={route('admin.notificaciones.index')}
+          submitLabel="Crear notificación"
+          maxWidth="max-w-4xl"
+        >
+          <div className="space-y-4">
+            {/* Row 1: Usuario & Tipo */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Usuario</Label>
+                <Select
+                  value={data.user_id === '' ? '' : String(data.user_id)}
+                  onValueChange={(v) => setData('user_id', Number(v))}
+                >
+                  <SelectTrigger className="rounded-lg">
+                    <SelectValue placeholder="Seleccioná un usuario" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usuarios.map((u) => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.user_id && <p className="text-sm text-destructive">{errors.user_id}</p>}
+              </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="tipo">Tipo</Label>
-            <Input id="tipo" value={data.tipo} onChange={(e) => setData('tipo', e.target.value)} />
-            {errors.tipo && <p className="text-sm text-destructive">{errors.tipo}</p>}
-          </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tipo">Tipo</Label>
+                <Input
+                  id="tipo"
+                  value={data.tipo}
+                  onChange={(e) => setData('tipo', e.target.value)}
+                  placeholder="Ej. nuevo_archivo"
+                  className="rounded-lg"
+                />
+                {errors.tipo && <p className="text-sm text-destructive">{errors.tipo}</p>}
+              </div>
+            </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="data">Data (JSON)</Label>
-            <Textarea
-              id="data"
-              value={data.data}
-              onChange={(e) => setData('data', e.target.value)}
-              placeholder='{"mensaje": "texto"}'
-            />
-            {errors.data && <p className="text-sm text-destructive">{errors.data}</p>}
-          </div>
+            {/* Row 2: Leído en */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="leido_en">Leído en</Label>
+                <Input
+                  id="leido_en"
+                  type="datetime-local"
+                  value={data.leido_en ?? ''}
+                  onChange={(e) => setData('leido_en', e.target.value)}
+                  className="rounded-lg"
+                />
+                {errors.leido_en && <p className="text-sm text-destructive">{errors.leido_en}</p>}
+              </div>
+            </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="leido_en">Leído en</Label>
-            <Input
-              id="leido_en"
-              type="datetime-local"
-              value={data.leido_en ?? ''}
-              onChange={(e) => setData('leido_en', e.target.value)}
-            />
-            {errors.leido_en && <p className="text-sm text-destructive">{errors.leido_en}</p>}
+            {/* Row 3: Data (JSON) */}
+            <div className="space-y-1.5">
+              <Label htmlFor="data">Data (JSON)</Label>
+              <Textarea
+                id="data"
+                value={data.data}
+                onChange={(e) => setData('data', e.target.value)}
+                placeholder='{"mensaje": "texto"}'
+                className="rounded-lg resize-none min-h-[100px] font-mono text-xs"
+              />
+              {errors.data && <p className="text-sm text-destructive">{errors.data}</p>}
+            </div>
           </div>
-
-          <Button disabled={processing} type="submit">
-            Guardar notificación
-          </Button>
-        </form>
+        </FormLayout>
       </div>
     </AppLayout>
   );

@@ -28,6 +28,7 @@ class StorePlan_EstudioRequest extends FormRequest
             'estado' => ['required', 'in:vigente,no_vigente,discontinuado'],
             'vigente_desde' => ['nullable', 'date'],
             'vigente_hasta' => ['nullable', 'date', 'after_or_equal:vigente_desde'],
+            'optativas_requeridas' => ['required', 'integer', 'min:0'],
         ];
     }
 }

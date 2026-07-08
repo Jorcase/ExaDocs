@@ -13,6 +13,7 @@ use App\Models\Plan_Estudio;
 use App\Models\Carrera;
 use App\Models\User;
 use App\Models\TipoCarrera;
+use App\Models\MateriaUserProgreso;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
@@ -33,13 +34,31 @@ class ArchivoController extends Controller
 {
     public function index(Request $request)
     {
-        $sortParam = $request->input('sort', 'date');
-        $sort = in_array($sortParam, ['title', 'popular'], true) ? $sortParam : 'date';
+        $sortParam = $request->input('sort', 'sugerido');
+        $sort = in_array($sortParam, ['title', 'popular', 'date', 'sugerido'], true) ? $sortParam : 'sugerido';
         $direction = $request->input('direction', 'desc') === 'asc' ? 'asc' : 'desc';
         $user = $request->user();
         $userId = $user?->id;
         $canViewAllEstados = $user && ($user->can('state_archivo') || $user->can('view_moderacion'));
         $estadoAprobadoId = $this->estadoAprobadoId();
+
+        $activeCarreraId = session('active_carrera_id') 
+            ?? $user?->carreras()->wherePivot('es_principal', true)->value('carreras.id')
+            ?? $user?->carreras()->value('carreras.id')
+            ?? $user?->profile?->carrera_principal_id;
+
+        $cursandoMateriaIds = [];
+        $regularMateriaIds = [];
+        $completadasMateriaIds = [];
+
+        if ($user && $activeCarreraId) {
+            $progreso = MateriaUserProgreso::where('user_id', $user->id)
+                ->where('carrera_id', $activeCarreraId)
+                ->get();
+            $cursandoMateriaIds = $progreso->where('estado', 'cursando')->pluck('materia_id')->toArray();
+            $regularMateriaIds = $progreso->where('estado', 'regular')->pluck('materia_id')->toArray();
+            $completadasMateriaIds = $progreso->whereIn('estado', ['aprobada', 'promocionada'])->pluck('materia_id')->toArray();
+        }
 
         $query = $this->buildFilteredQuery($request);
 
@@ -47,6 +66,21 @@ class ArchivoController extends Controller
             ->when($sort === 'title', fn($q) => $q->orderBy('titulo', $direction))
             ->when($sort === 'popular', fn($q) => $q->orderBy('visitas_count', $direction))
             ->when($sort === 'date', fn($q) => $q->orderBy('created_at', $direction))
+            ->when($sort === 'sugerido', function($q) use ($cursandoMateriaIds, $regularMateriaIds, $completadasMateriaIds, $direction) {
+                if (!empty($cursandoMateriaIds) || !empty($regularMateriaIds) || !empty($completadasMateriaIds)) {
+                    $cursandoList = implode(',', array_filter(array_map('intval', $cursandoMateriaIds))) ?: '0';
+                    $regularList = implode(',', array_filter(array_map('intval', $regularMateriaIds))) ?: '0';
+                    $completadasList = implode(',', array_filter(array_map('intval', $completadasMateriaIds))) ?: '0';
+                    
+                    $q->orderByRaw("CASE 
+                        WHEN materia_id IN ($cursandoList) THEN 1 
+                        WHEN materia_id IN ($regularList) THEN 2 
+                        WHEN materia_id NOT IN ($cursandoList, $regularList, $completadasList) THEN 3 
+                        ELSE 4 
+                    END ASC");
+                }
+                $q->orderBy('visitas_count', $direction);
+            })
             ->paginate(9)
             ->through(function ($archivo) use ($request) {
                 $auth = $request->user();
@@ -96,11 +130,16 @@ class ArchivoController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user = auth()->user();
         $canSetEstado = $user && $user->can('state_archivo');
         $estadoPendienteId = $this->estadoPendienteId();
+        $prefill = [
+            'carrera_id' => $request->input('carrera_id'),
+            'plan_estudio_id' => $request->input('plan_estudio_id'),
+            'materia_id' => $request->input('materia_id'),
+        ];
 
         return inertia('archivos/create', [
             'archivo' => new Archivo(),
@@ -116,6 +155,7 @@ class ArchivoController extends Controller
             'estados' => $canSetEstado ? EstadoArchivo::select('id', 'nombre')->orderBy('nombre')->get() : [],
             'estado_default_id' => $estadoPendienteId,
             'can_set_estado' => $canSetEstado,
+            'prefill' => $prefill,
         ]);
     }
 
@@ -150,7 +190,7 @@ class ArchivoController extends Controller
         }
 
         return redirect()
-            ->route('archivos.index')
+            ->route('archivos.index', $request->only(['carrera_id', 'plan_estudio_id', 'materia_id']))
             ->with('success', "Archivo {$archivo->titulo} creado correctamente.");
     }
 
@@ -278,10 +318,133 @@ class ArchivoController extends Controller
             ]
         );
 
+        // --- Carga de Progreso Académico para Mis Cosas ---
+        $activeCarreraId = session('active_carrera_id') ?? $user->carreras()->wherePivot('es_principal', true)->value('carreras.id');
+        if (!$activeCarreraId) {
+            $activeCarreraId = $user->carreras()->first()?->id;
+        }
+
+        $materiasPlan = [];
+        $progresoStats = [
+            'total_materias' => 0,
+            'aprobadas_count' => 0,
+            'cursando_count' => 0,
+            'regular_count' => 0,
+            'promedio' => 0,
+            'porcentaje' => 0,
+            'optativas_requeridas' => 0,
+        ];
+
+        if ($activeCarreraId) {
+            $carrera = Carrera::with(['materias' => function ($query) {
+                $query->select('materias.id', 'materias.nombre', 'materias.codigo')
+                    ->withPivot('cuatrimestre', 'anio_sugerido');
+            }])->find($activeCarreraId);
+
+            if ($carrera) {
+                $planEstudioId = $user->carreras()->where('carreras.id', $activeCarreraId)->first()?->pivot->plan_estudio_id;
+                $optativasRequeridas = 0;
+                $tipoAsignaturas = [];
+                
+                if ($planEstudioId) {
+                    $plan = Plan_Estudio::find($planEstudioId);
+                    if ($plan) {
+                        $optativasRequeridas = $plan->optativas_requeridas ?? 0;
+                        $tipoAsignaturas = \DB::table('plan_materia')
+                            ->where('plan_id', $planEstudioId)
+                            ->pluck('tipo_asignatura', 'materia_id')
+                            ->toArray();
+                    }
+                }
+
+                $progreso = $user->progresos()
+                    ->where('carrera_id', $activeCarreraId)
+                    ->get()
+                    ->keyBy('materia_id');
+
+                $materiasPlan = $carrera->materias
+                    ->filter(function ($materia) use ($planEstudioId, $tipoAsignaturas) {
+                        if ($planEstudioId) {
+                            return isset($tipoAsignaturas[$materia->id]);
+                        }
+                        return true;
+                    })
+                    ->map(function ($materia) use ($progreso, $tipoAsignaturas) {
+                        $prog = $progreso->get($materia->id);
+                        return [
+                            'id' => $materia->id,
+                            'nombre' => $materia->nombre,
+                            'codigo' => $materia->codigo,
+                            'anio_sugerido' => $materia->pivot->anio_sugerido,
+                            'cuatrimestre' => $materia->pivot->cuatrimestre,
+                            'estado' => $prog ? $prog->estado : 'pendiente',
+                            'nota' => $prog ? $prog->nota : null,
+                            'tipo_asignatura' => $tipoAsignaturas[$materia->id] ?? 'obligatoria',
+                            'fecha_aprobacion' => $prog ? ($prog->fecha_aprobacion ? $prog->fecha_aprobacion->format('Y-m-d') : null) : null,
+                        ];
+                    })->sortBy([
+                        ['anio_sugerido', 'asc'],
+                        ['cuatrimestre', 'asc'],
+                        ['nombre', 'asc'],
+                    ])->values()->toArray();
+
+                $obligatorias = collect($materiasPlan)->filter(fn($m) => $m['tipo_asignatura'] !== 'optativa');
+                $optativas = collect($materiasPlan)->filter(fn($m) => $m['tipo_asignatura'] === 'optativa');
+
+                $ob_aprobadas = $obligatorias->filter(fn($m) => in_array($m['estado'], ['aprobada', 'promocionada']));
+                $ob_cursando = $obligatorias->filter(fn($m) => $m['estado'] === 'cursando');
+                $ob_regular = $obligatorias->filter(fn($m) => $m['estado'] === 'regular');
+
+                $opt_aprobadas = $optativas->filter(fn($m) => in_array($m['estado'], ['aprobada', 'promocionada']));
+                $opt_cursando = $optativas->filter(fn($m) => $m['estado'] === 'cursando');
+                $opt_regular = $optativas->filter(fn($m) => $m['estado'] === 'regular');
+
+                // Cap approved electives to required number
+                $count_opt_aprobadas = min($opt_aprobadas->count(), $optativasRequeridas);
+                $remaining = $optativasRequeridas - $count_opt_aprobadas;
+
+                // Cap cursando electives
+                $count_opt_cursando = min($opt_cursando->count(), $remaining);
+                $remaining -= $count_opt_cursando;
+
+                // Cap regular electives
+                $count_opt_regular = min($opt_regular->count(), $remaining);
+
+                $aprobadasCount = $ob_aprobadas->count() + $count_opt_aprobadas;
+                $cursandoCount = $ob_cursando->count() + $count_opt_cursando;
+                $regularCount = $ob_regular->count() + $count_opt_regular;
+                $totalMaterias = $obligatorias->count() + $optativasRequeridas;
+
+                $sumNotas = 0;
+                $countNotas = 0;
+                foreach ($materiasPlan as $m) {
+                    if (in_array($m['estado'], ['aprobada', 'promocionada']) && $m['nota']) {
+                        $sumNotas += $m['nota'];
+                        $countNotas++;
+                    }
+                }
+
+                $promedio = $countNotas > 0 ? round($sumNotas / $countNotas, 2) : 0;
+                $progresoPorcentaje = $totalMaterias > 0 ? round(($aprobadasCount / $totalMaterias) * 100, 1) : 0;
+
+                $progresoStats = [
+                    'total_materias' => $totalMaterias,
+                    'aprobadas_count' => $aprobadasCount,
+                    'cursando_count' => $cursandoCount,
+                    'regular_count' => $regularCount,
+                    'promedio' => $promedio,
+                    'porcentaje' => $progresoPorcentaje,
+                    'optativas_requeridas' => $optativasRequeridas,
+                ];
+            }
+        }
+
         return inertia('mis-cosas/index', [
             'guardados' => $guardados,
             'publicaciones' => $publicaciones,
             'actividad' => $actividadPaginated,
+            'materiasPlan' => $materiasPlan,
+            'progresoStats' => $progresoStats,
         ]);
     }
 
@@ -389,7 +552,7 @@ class ArchivoController extends Controller
         }
 
         return redirect()
-            ->route('archivos.index')
+            ->route('archivos.index', $request->only(['carrera_id', 'plan_estudio_id', 'materia_id']))
             ->with('success', "Archivo {$archivo->titulo} actualizado correctamente.");
     }
 
@@ -420,7 +583,24 @@ class ArchivoController extends Controller
             ->when($sort === 'title', fn ($q) => $q->orderBy('titulo', $direction))
             ->when($sort !== 'title', fn ($q) => $q->orderBy('created_at', $direction))
             ->get();
-        $pdf = Pdf::loadView('pdf.archivos', compact('archivos'));
+
+        $carreraId = $request->input('carrera_id');
+        $materiaId = $request->input('materia_id');
+        $tituloReporte = 'Reporte de Archivos';
+
+        if ($carreraId && $materiaId) {
+            $carreraNombre = \App\Models\Carrera::where('id', $carreraId)->value('nombre');
+            $materiaNombre = \App\Models\Materia::where('id', $materiaId)->value('nombre');
+            $tituloReporte = "Archivos de {$materiaNombre} de la carrera \"{$carreraNombre}\"";
+        } elseif ($carreraId) {
+            $carreraNombre = \App\Models\Carrera::where('id', $carreraId)->value('nombre');
+            $tituloReporte = "Archivos de la carrera \"{$carreraNombre}\"";
+        } elseif ($materiaId) {
+            $materiaNombre = \App\Models\Materia::where('id', $materiaId)->value('nombre');
+            $tituloReporte = "Archivos de la materia \"{$materiaNombre}\"";
+        }
+
+        $pdf = Pdf::loadView('pdf.archivos', compact('archivos', 'tituloReporte'));
         return $pdf->stream('archivos.pdf');
     }
 
@@ -473,11 +653,11 @@ class ArchivoController extends Controller
         $query = Archivo::with([
             'autor:id,name',
             'materia:id,nombre',
-            'materia.carreras:id,nombre',
+            'materia.carreras:id,nombre,codigo',
             'tipo:id,nombre',
             'estado:id,nombre',
             'planEstudio:id,nombre,carrera_id',
-            'planEstudio.carrera:id,nombre',
+            'planEstudio.carrera:id,nombre,codigo',
         ])->withCount(['savers', 'comentarios', 'valoraciones'])
             ->withAvg('valoraciones', 'puntaje');
 
@@ -498,8 +678,15 @@ class ArchivoController extends Controller
         }
 
         if ($carreraId) {
-            $query->whereHas('materia.carreras', function ($q) use ($carreraId) {
-                $q->where('carreras.id', $carreraId);
+            $query->where(function ($q) use ($carreraId) {
+                $q->whereHas('planEstudio', function ($sub) use ($carreraId) {
+                    $sub->where('carrera_id', $carreraId);
+                })->orWhere(function ($sub) use ($carreraId) {
+                    $sub->whereNull('plan_estudio_id')
+                        ->whereHas('materia.carreras', function ($c) use ($carreraId) {
+                            $c->where('carreras.id', $carreraId);
+                        });
+                });
             });
         }
 
@@ -695,7 +882,7 @@ class ArchivoController extends Controller
             $archivo->visitas_count = ($archivo->visitas_count ?? 0) + 1;
             $vistos[] = $archivo->id;
             // Limitar el array para no crecer indefinidamente
-            $request->session()->put($sessionKey, array_slice(array_unique($vistos), -50));
+            $request->session()->put($sessionKey, array_slice(array_unique($vistos), -15));
         }
     }
 }

@@ -5,12 +5,9 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import { route } from 'ziggy-js';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { ListSection } from '@/components/list-section';
 import { DataTable } from '@/components/data-table';
 import { type ColumnDef } from '@tanstack/react-table';
 import { ArrowUpDown, FileText } from 'lucide-react';
-import Pagination from '@/components/pagination';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Sheet,
@@ -24,6 +21,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ListLayout } from '@/components/list-layout';
 
 interface ValoracionRow {
   id: number;
@@ -137,6 +135,7 @@ export default function Index({
             <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
           </Button>
         ),
+        cell: ({ getValue }) => <span className="font-semibold text-slate-900 dark:text-slate-100">{getValue<string>()}</span>,
       },
       {
         id: 'autor',
@@ -164,12 +163,12 @@ export default function Index({
             <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
           </Button>
         ),
-        cell: ({ getValue }) => <Badge variant="secondary">{getValue<number>()}/5</Badge>,
+        cell: ({ getValue }) => <Badge variant="secondary">{getValue<number>()} estrellas</Badge>,
       },
       {
         accessorKey: 'comentario',
         header: 'Comentario',
-        cell: ({ getValue }) => <span className="max-w-md whitespace-pre-wrap text-sm">{getValue<string>() ?? '—'}</span>,
+        cell: ({ getValue }) => <span className="max-w-md whitespace-pre-wrap text-sm line-clamp-2">{getValue<string>() ?? '—'}</span>,
       },
       {
         id: 'actions',
@@ -180,16 +179,16 @@ export default function Index({
           return (
             <div className="flex w-full justify-end gap-2 pr-1">
               <Link href={route('valoraciones.edit', v.id)}>
-                <Button size="sm" variant="secondary">
+                <Button size="sm" variant="secondary" className="rounded-lg">
                   Editar
                 </Button>
               </Link>
               <ConfirmDelete
                 disabled={processing}
                 onConfirm={() => destroy(route('valoraciones.destroy', v.id))}
-                description="La valoración se eliminará definitivamente."
+                description="La valoración se eliminará definitivamente de la base de datos."
               >
-                <Button size="sm" variant="destructive" disabled={processing}>
+                <Button size="sm" variant="destructive" className="rounded-lg" disabled={processing}>
                   Eliminar
                 </Button>
               </ConfirmDelete>
@@ -203,161 +202,145 @@ export default function Index({
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title="Valoraciones" />
-      <div className="m-4 space-y-4">
-        <section className="rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-        <ListSection
-          title="Valoraciones"
-          description="Registra los puntajes y feedback de los usuarios sobre archivos."
-          actions={
-            <Link href={route('valoraciones.create')}>
-              <Button>Crear valoración</Button>
-            </Link>
-          }
-        />
-        </section>
-        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-          <CardContent className="space-y-4">
-            <DataTable
-              columns={columns}
-              data={valoraciones.data}
-              filterKey="archivo"
-              placeholder="Buscar por archivo"
-              externalSort={sort}
-              onSortChange={(col, dir) => {
-                if (!col || !dir) return;
-                handleSort(col, dir as 'asc' | 'desc');
-              }}
-              endActions={
-                <>
-                  <Sheet open={openFilter} onOpenChange={setOpenFilter}>
-                    <SheetTrigger asChild>
-                      <Button variant="outline">Filtros</Button>
-                    </SheetTrigger>
-                    <SheetContent className="space-y-6 sm:w-[420px]">
-                      <SheetHeader>
-                        <SheetTitle>Filtrar valoraciones</SheetTitle>
-                      </SheetHeader>
-                      <div className="space-y-4 px-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="search">Buscar</Label>
-                          <Input
-                            id="search"
-                            value={filtersState.search}
-                            onChange={(e) =>
-                              setFiltersState((prev) => ({
-                                ...prev,
-                                search: e.target.value,
-                              }))
-                            }
-                            placeholder="Archivo, autor o comentario..."
-                          />
-                        </div>
-                        <div className="space-y-2 relative">
-                          <Label htmlFor="autor">Autor</Label>
-                          <Input
-                            id="autor"
-                            value={filtersState.autor}
-                            onChange={(e) =>
-                              setFiltersState((prev) => ({
-                                ...prev,
-                                autor: e.target.value,
-                              }))
-                            }
-                            placeholder="Escribí un autor..."
-                            autoComplete="off"
-                          />
-                          {filtersState.autor && autores.length > 0 && (
-                            <div className="absolute left-0 top-full z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-input bg-popover text-sm shadow-sm">
-                              {autores
-                                .filter((a) => a.toLowerCase().includes(filtersState.autor.toLowerCase()))
-                                .slice(0, 8)
-                                .map((aut) => (
-                                  <button
-                                    key={aut}
-                                    type="button"
-                                    className="flex w-full items-center px-3 py-2 text-left hover:bg-muted"
-                                    onClick={() =>
-                                      setFiltersState((prev) => ({
-                                        ...prev,
-                                        autor: aut,
-                                      }))
-                                    }
-                                  >
-                                    {aut}
-                                  </button>
-                                ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Puntaje</Label>
-                          <div className="grid grid-cols-1 gap-3">
-                            {[1, 2, 3, 4, 5].map((p) => (
-                              <label key={`puntaje-${p}`} className="flex items-center gap-2 text-sm">
-                                <Checkbox
-                                  checked={filtersState.puntaje.includes(p)}
-                                  onCheckedChange={(checked) => {
-                                    setFiltersState((prev) => {
-                                      const current = prev.puntaje;
-                                      return {
-                                        ...prev,
-                                        puntaje: checked ? [...current, p] : current.filter((item) => item !== p),
-                                      };
-                                    });
-                                  }}
-                                />
-                                {p} estrellas
-                              </label>
-                            ))}
-                          </div>
-                        </div>
+      <Head title="Valoraciones | Gestión" />
+      <ListLayout
+        title="Gestión de Valoraciones"
+        createHref={route('valoraciones.create')}
+        createLabel="Crear valoración"
+        paginationLinks={valoraciones.links}
+        actions={
+          <>
+            <Sheet open={openFilter} onOpenChange={setOpenFilter}>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="rounded-lg">Filtros</Button>
+              </SheetTrigger>
+              <SheetContent className="space-y-6 sm:w-[420px]">
+                <SheetHeader>
+                  <SheetTitle>Filtrar valoraciones</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-4 px-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="search">Buscar</Label>
+                    <Input
+                      id="search"
+                      value={filtersState.search}
+                      onChange={(e) =>
+                        setFiltersState((prev) => ({
+                          ...prev,
+                          search: e.target.value,
+                        }))
+                      }
+                      placeholder="Archivo, autor o comentario..."
+                      className="rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-2 relative">
+                    <Label htmlFor="autor">Autor</Label>
+                    <Input
+                      id="autor"
+                      value={filtersState.autor}
+                      onChange={(e) =>
+                        setFiltersState((prev) => ({
+                          ...prev,
+                          autor: e.target.value,
+                        }))
+                      }
+                      placeholder="Escribí un autor..."
+                      autoComplete="off"
+                      className="rounded-lg"
+                    />
+                    {filtersState.autor && autores.length > 0 && (
+                      <div className="absolute left-0 top-full z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-input bg-popover text-sm shadow-sm">
+                        {autores
+                          .filter((a) => a.toLowerCase().includes(filtersState.autor.toLowerCase()))
+                          .slice(0, 8)
+                          .map((aut) => (
+                            <button
+                              key={aut}
+                              type="button"
+                              className="flex w-full items-center px-3 py-2 text-left hover:bg-muted"
+                              onClick={() =>
+                                setFiltersState((prev) => ({
+                                  ...prev,
+                                  autor: aut,
+                                }))
+                              }
+                            >
+                              {aut}
+                            </button>
+                          ))}
                       </div>
-                      <SheetFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                        <SheetClose asChild>
-                          <Button variant="ghost" type="button" onClick={clearFilters}>
-                            Limpiar
-                          </Button>
-                        </SheetClose>
-                        <SheetClose asChild>
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              applyFilters(filtersState);
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Puntaje</Label>
+                    <div className="grid grid-cols-1 gap-3 mt-1">
+                      {[1, 2, 3, 4, 5].map((p) => (
+                        <label key={`puntaje-${p}`} className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                          <Checkbox
+                            checked={filtersState.puntaje.includes(p)}
+                            onCheckedChange={(checked) => {
+                              setFiltersState((prev) => {
+                                const current = prev.puntaje;
+                                return {
+                                  ...prev,
+                                  puntaje: checked ? [...current, p] : current.filter((item) => item !== p),
+                                };
+                              });
                             }}
-                          >
-                            Aplicar filtros
-                          </Button>
-                        </SheetClose>
-                      </SheetFooter>
-                    </SheetContent>
-                  </Sheet>
-                  <Button
-                    variant="secondary"
-                    className="bg-white text-slate-900 hover:bg-muted"
-                    type="button"
-                    onClick={clearFilters}
-                  >
-                    Limpiar
-                  </Button>
-                  <a href="/valoraciones/report" target="_blank" rel="noreferrer">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
-                    >
-                      <FileText className="h-4 w-4" />
+                          />
+                          <span>{p} estrellas</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <SheetFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <SheetClose asChild>
+                    <Button variant="ghost" type="button" className="rounded-lg" onClick={clearFilters}>
+                      Limpiar
                     </Button>
-                  </a>
-                </>
-              }
-            />
-            <div className="flex justify-end">
-              <Pagination links={valoraciones.links} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Button
+                      type="button"
+                      className="rounded-lg"
+                      onClick={() => {
+                        applyFilters(filtersState);
+                      }}
+                    >
+                      Aplicar filtros
+                    </Button>
+                  </SheetClose>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+            {openFilter || filtersState.search || filtersState.autor || filtersState.puntaje.length > 0 ? (
+              <Button
+                variant="secondary"
+                className="rounded-lg"
+                type="button"
+                onClick={clearFilters}
+              >
+                Limpiar Filtros
+              </Button>
+            ) : null}
+
+          </>
+        }
+      >
+        <DataTable
+          columns={columns}
+          data={valoraciones.data}
+          filterKey="archivo"
+          placeholder="Buscar por archivo"
+          externalSort={sort}
+          onSortChange={(col, dir) => {
+            if (!col || !dir) return;
+            handleSort(col, dir as 'asc' | 'desc');
+          }}
+        />
+      </ListLayout>
     </AppLayout>
   );
 }

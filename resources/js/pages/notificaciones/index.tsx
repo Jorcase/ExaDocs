@@ -1,12 +1,16 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type Url } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import { route } from 'ziggy-js';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import Pagination from '@/components/pagination';
+import { ListLayout } from '@/components/list-layout';
+import { DataTable } from '@/components/data-table';
+import { type ColumnDef } from '@tanstack/react-table';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 
 interface NotificacionRow {
   id: number;
@@ -22,81 +26,104 @@ interface Paginated {
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-  { title: 'Notificaciones (moderación)', href: route('admin.notificaciones.index') },
+  { title: 'Notificaciones', href: route('admin.notificaciones.index') },
 ];
 
-export default function Index({ notificaciones }: { notificaciones: Paginated }) {
+export default function Index({
+  notificaciones,
+  filters,
+}: {
+  notificaciones: Paginated;
+  filters?: { search?: string };
+}) {
   const { delete: destroy, processing } = useForm({});
+  const [search, setSearch] = useState(filters?.search ?? '');
+
+  // Debounced server-side search update
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.get(
+        route('admin.notificaciones.index'),
+        { search },
+        { preserveState: true, preserveScroll: true, replace: true }
+      );
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Column definitions for the DRY DataTable component
+  const columns: ColumnDef<NotificacionRow>[] = [
+    {
+      accessorKey: 'id',
+      header: 'ID',
+      cell: ({ getValue }) => <span className="font-medium">{getValue<number>()}</span>,
+    },
+    {
+      id: 'usuario',
+      accessorFn: (row) => row.user?.name ?? '—',
+      header: 'Usuario',
+      cell: ({ getValue }) => <span className="font-semibold text-foreground">{getValue<string>()}</span>,
+    },
+    {
+      accessorKey: 'tipo',
+      header: 'Tipo',
+      cell: ({ getValue }) => <span className="capitalize text-xs">{getValue<string>().replace('_', ' ')}</span>,
+    },
+    {
+      accessorKey: 'leido_en',
+      header: 'Estado',
+      cell: ({ getValue }) =>
+        getValue<string | null>() ? (
+          <Badge variant="default">Leído</Badge>
+        ) : (
+          <Badge variant="secondary">Pendiente</Badge>
+        ),
+    },
+    {
+      id: 'actions',
+      header: <div className="text-right">Acciones</div>,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const n = row.original;
+        return (
+          <div className="flex w-full justify-end gap-2 pr-1">
+            <Link href={route('admin.notificaciones.edit', n.id)}>
+              <Button size="sm" variant="secondary" className="rounded-lg">
+                Editar
+              </Button>
+            </Link>
+            <ConfirmDelete
+              disabled={processing}
+              onConfirm={() => destroy(route('admin.notificaciones.destroy', n.id))}
+              description="La notificación se eliminará definitivamente de la base de datos."
+            >
+              <Button size="sm" variant="destructive" className="rounded-lg" disabled={processing}>
+                Eliminar
+              </Button>
+            </ConfirmDelete>
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title="Notificaciones" />
-      <section className="m-4 space-y-4 rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">Notificaciones</h1>
-            <p className="text-sm text-slate-700 dark:text-slate-200">Gestiona las notificaciones creadas para los usuarios.</p>
-          </div>
-          <Link href={route('admin.notificaciones.create')}>
-            <Button>Crear notificación</Button>
-          </Link>
-        </div>
-        <div className="overflow-hidden rounded-xl border border-border/60 bg-white/50 dark:bg-white/5">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-slate-900 dark:text-slate-100">ID</TableHead>
-                <TableHead className="text-slate-900 dark:text-slate-100">Usuario</TableHead>
-                <TableHead className="text-slate-900 dark:text-slate-100">Tipo</TableHead>
-                <TableHead className="text-slate-900 dark:text-slate-100">Leído</TableHead>
-                <TableHead className="text-right text-slate-900 dark:text-slate-100">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {notificaciones.data.map((n) => (
-                <TableRow key={n.id}>
-                  <TableCell>{n.id}</TableCell>
-                  <TableCell>{n.user?.name ?? '—'}</TableCell>
-                  <TableCell className="capitalize">{n.tipo}</TableCell>
-                  <TableCell>
-                    {n.leido_en ? (
-                      <Badge variant="default">Leído</Badge>
-                    ) : (
-                      <Badge variant="secondary">Pendiente</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Link href={route('admin.notificaciones.edit', n.id)}>
-                      <Button size="sm" variant="secondary">
-                        Editar
-                      </Button>
-                    </Link>
-                    <ConfirmDelete
-                      disabled={processing}
-                      onConfirm={() => destroy(route('admin.notificaciones.destroy', n.id))}
-                      description="La notificación se eliminará definitivamente."
-                    >
-                      <Button size="sm" variant="destructive" disabled={processing}>
-                        Eliminar
-                      </Button>
-                    </ConfirmDelete>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {notificaciones.data.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-sm">
-                    No hay notificaciones.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="flex justify-end">
-          <Pagination links={notificaciones.links} />
-        </div>
-      </section>
+      <Head title="Notificaciones | Gestión" />
+      <ListLayout
+        title="Gestión de Notificaciones"
+        createHref={route('admin.notificaciones.create')}
+        createLabel="Crear notificación"
+        paginationLinks={notificaciones.links}
+      >
+        <DataTable
+          columns={columns}
+          data={notificaciones.data}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Buscar por usuario..."
+        />
+      </ListLayout>
     </AppLayout>
   );
 }

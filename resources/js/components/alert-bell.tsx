@@ -22,9 +22,10 @@ type NotificationItem = {
 type Props = {
     items?: NotificationItem[];
     total?: number;
+    className?: string;
 };
 
-export function AlertBell({ items = [], total }: Props) {
+export function AlertBell({ items = [], total, className }: Props) {
     const { post, processing } = useForm({});
     const limitedItems = items.slice(0, 5);
     const unreadCount = useMemo(() => {
@@ -64,9 +65,9 @@ export function AlertBell({ items = [], total }: Props) {
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
-                    className="h-9 w-9 relative"
+                    className={`relative ${className || "h-9 w-9 border border-border"}`}
                     title="Notificaciones"
                 >
                     <Bell className="h-4 w-4" />

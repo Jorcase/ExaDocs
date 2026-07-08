@@ -31,6 +31,8 @@ class UpdateMateriaRequest extends FormRequest
             'asignaciones' => ['array'],
             'asignaciones.*.carrera_id' => ['required', 'exists:carreras,id'],
             'asignaciones.*.plan_estudio_id' => ['nullable', 'exists:plan_estudios,id'],
+            'asignaciones.*.anio_sugerido' => ['nullable', 'integer', 'min:1', 'max:6'],
+            'asignaciones.*.cuatrimestre' => ['nullable', 'integer', 'min:0', 'max:2'],
         ];
     }
 }

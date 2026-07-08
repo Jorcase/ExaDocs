@@ -4,11 +4,9 @@ import { Head, Link, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import { route } from 'ziggy-js';
-import { ListSection } from '@/components/list-section';
 import { DataTable } from '@/components/data-table';
 import { type ColumnDef } from '@tanstack/react-table';
 import { ArrowUpDown, FileText } from 'lucide-react';
-import Pagination from '@/components/pagination';
 import {
   Sheet,
   SheetContent,
@@ -20,9 +18,8 @@ import {
 } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
 import { useMemo, useState, useEffect } from 'react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { ListLayout } from '@/components/list-layout';
 
 interface PerfilRow {
   id: number;
@@ -108,13 +105,13 @@ export default function Index({
     });
   };
 
-    const filteredCarreras = useMemo(() => {
-      if (!carreras) return [];
-      if (!localFilters.carrera_nombre?.trim()) return [];
-      return carreras
-        .filter((c) => c.nombre.toLowerCase().includes(localFilters.carrera_nombre.toLowerCase()))
-        .slice(0, 8);
-    }, [carreras, localFilters.carrera_nombre]);
+  const filteredCarreras = useMemo(() => {
+    if (!carreras) return [];
+    if (!localFilters.carrera_nombre?.trim()) return [];
+    return carreras
+      .filter((c) => c.nombre.toLowerCase().includes(localFilters.carrera_nombre.toLowerCase()))
+      .slice(0, 8);
+  }, [carreras, localFilters.carrera_nombre]);
 
   const columns: ColumnDef<PerfilRow>[] = useMemo(
     () => [
@@ -130,6 +127,7 @@ export default function Index({
             <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
           </Button>
         ),
+        cell: ({ getValue }) => <span className="font-medium">{getValue<number>()}</span>,
       },
       {
         accessorKey: 'user',
@@ -143,7 +141,7 @@ export default function Index({
             <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
           </Button>
         ),
-        cell: ({ row }) => row.original.user?.name ?? '—',
+        cell: ({ row }) => <span className="font-semibold text-slate-900 dark:text-slate-100">{row.original.user?.name ?? '—'}</span>,
         accessorFn: (row) => row.user?.name ?? '',
       },
       {
@@ -159,7 +157,7 @@ export default function Index({
             <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
           </Button>
         ),
-        cell: ({ getValue }) => getValue<string>() || '—',
+        cell: ({ getValue }) => <span className="text-slate-600 dark:text-slate-400">{getValue<string>() || '—'}</span>,
       },
       {
         id: 'carrera',
@@ -185,21 +183,21 @@ export default function Index({
           return (
             <div className="flex w-full justify-end gap-2">
               <Link href={route('perfiles.show', perfil.id)}>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" className="rounded-lg">
                   Ver
                 </Button>
               </Link>
               <Link href={route('perfiles.edit', perfil.id)}>
-                <Button size="sm" variant="secondary">
+                <Button size="sm" variant="secondary" className="rounded-lg">
                   Editar
                 </Button>
               </Link>
               <ConfirmDelete
                 disabled={processing}
                 onConfirm={() => destroy(route('perfiles.destroy', perfil.id))}
-                description="El perfil se eliminará definitivamente."
+                description="El perfil se eliminará definitivamente de la base de datos."
               >
-                <Button size="sm" variant="destructive" disabled={processing}>
+                <Button size="sm" variant="destructive" className="rounded-lg" disabled={processing}>
                   Eliminar
                 </Button>
               </ConfirmDelete>
@@ -213,210 +211,207 @@ export default function Index({
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title="Perfiles de usuario" />
-      <div className="m-4 space-y-4">
-        <section className="rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-            <ListSection
-              title="Perfiles"
-              description="Gestiona la información de usuarios y su carrera principal."
-              actions={
-                <Link href={route('perfiles.create')}>
-                  <Button>Crear perfil</Button>
-                </Link>
-              }
-            />
-        </section>
-        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-          <CardContent className="space-y-4">
-            <DataTable
-              columns={columns}
-              data={perfiles.data}
-              filterKey="user"
-              placeholder="Buscar por usuario..."
-              externalSort={sort}
-              onSortChange={(col, dir) => {
-                if (!col || !dir) {
-                  handleSort('id', 'desc');
-                  return;
-                }
-                handleSort(col, dir as 'asc' | 'desc');
-              }}
-              endActions={
-                <>
-                  <Sheet open={open} onOpenChange={setOpen}>
-                    <SheetTrigger asChild>
-                      <Button variant="outline">Filtros</Button>
-                    </SheetTrigger>
-                    <SheetContent className="space-y-6 sm:w-[420px]">
-                      <SheetHeader>
-                        <SheetTitle>Filtrar perfiles</SheetTitle>
-                      </SheetHeader>
-                        <div className="space-y-4 px-2">
-                          <div className="space-y-2">
-                            <Label htmlFor="search">Nombre o email</Label>
-                            <Input
-                                id="search"
-                              value={localFilters.search}
-                              onChange={(e) =>
-                                  setLocalFilters((prev) => ({
-                                      ...prev,
-                                      search: e.target.value,
-                                  }))
-                              }
-                                placeholder="Buscar por nombre/email..."
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="documento">Documento</Label>
-                            <Input
-                              id="documento"
-                              value={localFilters.documento}
-                              onChange={(e) =>
-                                setLocalFilters((prev) => ({
-                                  ...prev,
-                                  documento: e.target.value,
-                                }))
-                              }
-                              placeholder="DNI..."
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="telefono">Teléfono</Label>
-                            <Input
-                              id="telefono"
-                              value={localFilters.telefono}
-                              onChange={(e) =>
-                                setLocalFilters((prev) => ({
-                                  ...prev,
-                                  telefono: e.target.value,
-                                }))
-                              }
-                              placeholder="Teléfono..."
-                            />
-                          </div>
-                          <div className="space-y-2 relative overflow-visible">
-                            <Label htmlFor="carrera">Carrera</Label>
-                          <Input
-                              id="carrera"
-                              autoComplete="off"
-                              value={localFilters.carrera_nombre}
-                              onChange={(e) =>
-                                  setLocalFilters((prev) => ({
-                                      ...prev,
-                                      carrera_nombre: e.target.value,
-                                      carrera_id: null,
-                                  }))
-                              }
-                              onFocus={() => setShowCarreraSuggestions(true)}
-                              onBlur={() => {
-                                  setTimeout(() => setShowCarreraSuggestions(false), 120);
-                              }}
-                              placeholder="Escribí una carrera..."
-                          />
-                          {showCarreraSuggestions &&
-                              localFilters.carrera_nombre.trim().length > 0 &&
-                              filteredCarreras.length > 0 && (
-                              <div className="absolute left-0 top-full mt-1 z-50 w-full max-h-48 overflow-auto rounded-md border border-input bg-popover text-sm shadow-sm">
-                                {filteredCarreras.map((carrera) => (
-                                  <button
-                                      key={carrera.id}
-                                      type="button"
-                                      className="flex w-full items-center px-3 py-2 text-left hover:bg-muted"
-                                      onClick={() => {
-                                        setLocalFilters((prev) => ({
-                                          ...prev,
-                                          carrera_nombre: carrera.nombre,
-                                          carrera_id: carrera.id,
-                                        }));
-                                        setShowCarreraSuggestions(false);
-                                      }}
-                                  >
-                                    {carrera.nombre}
-                                  </button>
-                                ))}
-                              </div>
-                          )}
-                        </div>
+      <Head title="Perfiles | Gestión" />
+      <ListLayout
+        title="Gestión de Perfiles"
+        createHref={route('perfiles.create')}
+        createLabel="Crear perfil"
+        paginationLinks={perfiles.links}
+        actions={
+          <>
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="rounded-lg">Filtros</Button>
+              </SheetTrigger>
+              <SheetContent className="space-y-6 sm:w-[420px]">
+                <SheetHeader>
+                  <SheetTitle>Filtrar perfiles</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-4 px-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="search">Nombre o email</Label>
+                    <Input
+                      id="search"
+                      value={localFilters.search}
+                      onChange={(e) =>
+                        setLocalFilters((prev) => ({
+                          ...prev,
+                          search: e.target.value,
+                        }))
+                      }
+                      placeholder="Buscar por nombre/email..."
+                      className="rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="documento">Documento</Label>
+                    <Input
+                      id="documento"
+                      value={localFilters.documento}
+                      onChange={(e) =>
+                        setLocalFilters((prev) => ({
+                          ...prev,
+                          documento: e.target.value,
+                        }))
+                      }
+                      placeholder="DNI..."
+                      className="rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="telefono">Teléfono</Label>
+                    <Input
+                      id="telefono"
+                      value={localFilters.telefono}
+                      onChange={(e) =>
+                        setLocalFilters((prev) => ({
+                          ...prev,
+                          telefono: e.target.value,
+                        }))
+                      }
+                      placeholder="Teléfono..."
+                      className="rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-2 relative overflow-visible">
+                    <Label htmlFor="carrera">Carrera</Label>
+                    <Input
+                      id="carrera"
+                      autoComplete="off"
+                      value={localFilters.carrera_nombre}
+                      onChange={(e) =>
+                        setLocalFilters((prev) => ({
+                          ...prev,
+                          carrera_nombre: e.target.value,
+                          carrera_id: null,
+                        }))
+                      }
+                      onFocus={() => setShowCarreraSuggestions(true)}
+                      onBlur={() => {
+                        setTimeout(() => setShowCarreraSuggestions(false), 120);
+                      }}
+                      placeholder="Escribí una carrera..."
+                      className="rounded-lg"
+                    />
+                    {showCarreraSuggestions &&
+                      localFilters.carrera_nombre.trim().length > 0 &&
+                      filteredCarreras.length > 0 && (
+                      <div className="absolute left-0 top-full mt-1 z-50 w-full max-h-48 overflow-auto rounded-md border border-input bg-popover text-sm shadow-sm">
+                        {filteredCarreras.map((carrera) => (
+                          <button
+                            key={carrera.id}
+                            type="button"
+                            className="flex w-full items-center px-3 py-2 text-left hover:bg-muted"
+                            onClick={() => {
+                              setLocalFilters((prev) => ({
+                                ...prev,
+                                carrera_nombre: carrera.nombre,
+                                carrera_id: carrera.id,
+                              }));
+                              setShowCarreraSuggestions(false);
+                            }}
+                          >
+                            {carrera.nombre}
+                          </button>
+                        ))}
                       </div>
-                          <SheetFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                            <SheetClose asChild>
-                              <Button
-                                  variant="ghost"
-                                  type="button"
-                                  onClick={() => {
-                                    const cleaned = {
-                                      search: '',
-                                      carrera_id: null,
-                                      carrera_nombre: '',
-                                      documento: '',
-                                      telefono: '',
-                                    };
-                                    setLocalFilters(cleaned);
-                                    router.get(route('perfiles.index'), buildParams(cleaned, { column: 'id', direction: 'desc' }), {
-                                      preserveState: true,
-                                      preserveScroll: true,
-                                      replace: true,
-                                    });
-                                  }}
-                              >
-                                Limpiar
-                              </Button>
-                            </SheetClose>
-                            <SheetClose asChild>
-                              <Button
-                                  type="button"
-                                  onClick={() => {
-                                    router.get(route('perfiles.index'), buildParams(localFilters), {
-                                      preserveState: true,
-                                      preserveScroll: true,
-                                      replace: true,
-                                    });
-                                  }}
-                              >
-                                Aplicar filtros
-                              </Button>
-                            </SheetClose>
-                          </SheetFooter>
-                    </SheetContent>
-                  </Sheet>
-                  <Button
-                    variant="secondary"
-                    className="bg-white text-slate-900 hover:bg-muted"
-                    type="button"
-                    onClick={() => {
-                      const cleaned = {
-                        search: '',
-                        carrera_id: null,
-                        carrera_nombre: '',
-                      };
-                      setLocalFilters(cleaned);
-                      router.get(route('perfiles.index'), buildParams(cleaned, { column: 'id', direction: 'desc' }), {
-                        preserveState: true,
-                        preserveScroll: true,
-                        replace: true,
-                      });
-                    }}
-                  >
-                    Limpiar
-                  </Button>
-                  <a href={route('perfiles.report', buildParams(localFilters))} target="_blank" rel="noreferrer">
+                    )}
+                  </div>
+                </div>
+                <SheetFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <SheetClose asChild>
                     <Button
-                      variant="outline"
-                      size="icon"
-                      className="border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                      variant="ghost"
+                      type="button"
+                      className="rounded-lg"
+                      onClick={() => {
+                        const cleaned = {
+                          search: '',
+                          carrera_id: null,
+                          carrera_nombre: '',
+                          documento: '',
+                          telefono: '',
+                        };
+                        setLocalFilters(cleaned);
+                        router.get(route('perfiles.index'), buildParams(cleaned, { column: 'id', direction: 'desc' }), {
+                          preserveState: true,
+                          preserveScroll: true,
+                          replace: true,
+                        });
+                      }}
                     >
-                      <FileText className="h-4 w-4" />
+                      Limpiar
                     </Button>
-                  </a>
-                </>
-              }
-            />
-            <div className="flex justify-end">
-              <Pagination links={perfiles.links} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Button
+                      type="button"
+                      className="rounded-lg"
+                      onClick={() => {
+                        router.get(route('perfiles.index'), buildParams(localFilters), {
+                          preserveState: true,
+                          preserveScroll: true,
+                          replace: true,
+                        });
+                      }}
+                    >
+                      Aplicar filtros
+                    </Button>
+                  </SheetClose>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+            {open || localFilters.search || localFilters.documento || localFilters.telefono || localFilters.carrera_id ? (
+              <Button
+                variant="secondary"
+                className="rounded-lg"
+                type="button"
+                onClick={() => {
+                  const cleaned = {
+                    search: '',
+                    carrera_id: null,
+                    carrera_nombre: '',
+                    documento: '',
+                    telefono: '',
+                  };
+                  setLocalFilters(cleaned);
+                  router.get(route('perfiles.index'), buildParams(cleaned, { column: 'id', direction: 'desc' }), {
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                  });
+                }}
+              >
+                Limpiar Filtros
+              </Button>
+            ) : null}
+            <a href={route('perfiles.report', buildParams(localFilters))} target="_blank" rel="noreferrer">
+              <Button
+                variant="outline"
+                size="icon"
+                className="border-red-500/20 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 rounded-lg"
+              >
+                <FileText className="h-4 w-4" />
+              </Button>
+            </a>
+          </>
+        }
+      >
+        <DataTable
+          columns={columns}
+          data={perfiles.data}
+          filterKey="user"
+          placeholder="Buscar por usuario..."
+          externalSort={sort}
+          onSortChange={(col, dir) => {
+            if (!col || !dir) {
+              handleSort('id', 'desc');
+              return;
+            }
+            handleSort(col, dir as 'asc' | 'desc');
+          }}
+        />
+      </ListLayout>
     </AppLayout>
   );
 }

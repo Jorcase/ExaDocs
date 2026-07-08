@@ -3,6 +3,9 @@ import { LucideIcon } from 'lucide-react';
 
 export interface Auth {
     user: User;
+    active_carrera_id?: number | null;
+    carreras?: { id: number; nombre: string; codigo: string}[];
+    permissions?: string[];
 }
 
 export interface BreadcrumbItem {

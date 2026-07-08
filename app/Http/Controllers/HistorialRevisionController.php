@@ -89,9 +89,22 @@ class HistorialRevisionController extends Controller
         $estadoArchivoId = $request->input('estado_archivo_id');
         $archivoSeleccionado = $archivoId ? Archivo::with('estado:id,nombre')->find($archivoId) : null;
 
+        $archivosQuery = Archivo::query();
+        if ($archivoSeleccionado) {
+            $archivosQuery->where(function($q) use ($archivoSeleccionado) {
+                $q->whereHas('estado', function ($sub) {
+                    $sub->where('nombre', 'Pendiente');
+                })->orWhere('id', $archivoSeleccionado->id);
+            });
+        } else {
+            $archivosQuery->whereHas('estado', function ($sub) {
+                $sub->where('nombre', 'Pendiente');
+            });
+        }
+
         return inertia('historial-revisiones/create', [
             'revision' => new HistorialRevision(),
-            'archivos' => Archivo::with('estado:id,nombre')
+            'archivos' => $archivos = $archivosQuery->with('estado:id,nombre')
                 ->select('id', 'titulo', 'estado_archivo_id')
                 ->orderBy('titulo')
                 ->get(),
@@ -134,10 +147,11 @@ class HistorialRevisionController extends Controller
             'archivo_id' => $revision->archivo_id,
             'tipo' => 'revision',
             'titulo' => "Tu archivo fue {$revision->estado_nuevo}",
-            'mensaje' => "Estado previo: {$revision->estado_previo}",
+            'mensaje' => $revision->comentario ?: null,
             'data' => [
                 'estado_previo' => $revision->estado_previo,
                 'estado_nuevo' => $revision->estado_nuevo,
+                'comentario' => $revision->comentario,
             ],
         ]);
 
@@ -149,7 +163,12 @@ class HistorialRevisionController extends Controller
     {
         return inertia('historial-revisiones/edit', [
             'revision' => $historialRevision,
-            'archivos' => Archivo::with('estado:id,nombre')
+            'archivos' => Archivo::where(function($query) use ($historialRevision) {
+                    $query->whereHas('estado', function ($q) {
+                        $q->where('nombre', 'Pendiente');
+                    })->orWhere('id', $historialRevision->archivo_id);
+                })
+                ->with('estado:id,nombre')
                 ->select('id', 'titulo', 'estado_archivo_id')
                 ->orderBy('titulo')
                 ->get(),
@@ -186,10 +205,11 @@ class HistorialRevisionController extends Controller
             'archivo_id' => $historialRevision->archivo_id,
             'tipo' => 'revision',
             'titulo' => "Tu archivo fue {$historialRevision->estado_nuevo}",
-            'mensaje' => "Estado previo: {$historialRevision->estado_previo}",
+            'mensaje' => $historialRevision->comentario ?: null,
             'data' => [
                 'estado_previo' => $historialRevision->estado_previo,
                 'estado_nuevo' => $historialRevision->estado_nuevo,
+                'comentario' => $historialRevision->comentario,
             ],
         ]);
 

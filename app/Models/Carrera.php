@@ -47,4 +47,11 @@ class Carrera extends Model
     {
         return $this->belongsTo(TipoCarrera::class);
     }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'carrera_user')
+            ->withPivot('plan_estudio_id', 'es_principal')
+            ->withTimestamps();
+    }
 }

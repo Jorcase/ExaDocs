@@ -4,13 +4,9 @@ import { Head, Link, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import { route } from 'ziggy-js';
-import { Card, CardContent } from '@/components/ui/card';
-import { ListSection } from '@/components/list-section';
 import { DataTable } from '@/components/data-table';
 import { type ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown } from 'lucide-react';
-import { useMemo, useState, useEffect } from 'react';
-import Pagination from '@/components/pagination';
+import { ArrowUpDown, FileText } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -21,9 +17,10 @@ import {
   SheetClose,
 } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
-import { FileText } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { ListLayout } from '@/components/list-layout';
+import { useMemo, useState, useEffect } from 'react';
 
 interface RevisionRow {
   id: number;
@@ -75,6 +72,7 @@ export default function Index({
     direction: (filters?.direction as 'asc' | 'desc') ?? 'desc',
   });
   const [openFilter, setOpenFilter] = useState(false);
+  const [localSearch, setLocalSearch] = useState(filters?.search ?? '');
 
   useEffect(() => {
     setFiltersState({
@@ -87,7 +85,19 @@ export default function Index({
       column: filters?.sort ?? 'id',
       direction: (filters?.direction as 'asc' | 'desc') ?? 'desc',
     });
+    setLocalSearch(filters?.search ?? '');
   }, [filters]);
+
+  // Búsqueda con debounce
+  useEffect(() => {
+    if (localSearch === (filters?.search ?? '')) {
+      return;
+    }
+    const handler = setTimeout(() => {
+      applyFilters({ ...filtersState, search: localSearch });
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [localSearch]);
 
   const applyFilters = (state: typeof filtersState, customSort?: { column: string; direction: 'asc' | 'desc' }) => {
     router.get(
@@ -110,6 +120,7 @@ export default function Index({
   };
 
   const clearFilters = () => {
+    setLocalSearch('');
     const cleaned = { search: '', revisor: '', estado_previo: [], estado_nuevo: [] as string[] };
     setFiltersState(cleaned);
     applyFilters(cleaned);
@@ -144,6 +155,7 @@ export default function Index({
             <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
           </Button>
         ),
+        cell: ({ getValue }) => <span className="font-semibold text-slate-900 dark:text-slate-100">{getValue<string>()}</span>,
       },
       {
         id: 'revisor',
@@ -171,6 +183,7 @@ export default function Index({
             <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
           </Button>
         ),
+        cell: ({ getValue }) => <span className="text-xs font-semibold capitalize bg-muted px-2 py-0.5 rounded border">{getValue<string>()}</span>,
       },
       {
         accessorKey: 'estado_nuevo',
@@ -184,12 +197,13 @@ export default function Index({
             <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
           </Button>
         ),
+        cell: ({ getValue }) => <span className="text-xs font-semibold capitalize bg-muted px-2 py-0.5 rounded border">{getValue<string>()}</span>,
       },
       {
         accessorKey: 'comentario',
         header: 'Comentario',
         cell: ({ getValue }) => (
-          <span className="text-sm text-muted-foreground whitespace-pre-wrap">
+          <span className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-2">
             {getValue<string>() ?? '—'}
           </span>
         ),
@@ -203,16 +217,16 @@ export default function Index({
           return (
             <div className="flex w-full justify-end gap-2 pr-1">
               <Link href={route('historial-revisiones.edit', rev.id)}>
-                <Button size="sm" variant="secondary">
+                <Button size="sm" variant="secondary" className="rounded-lg">
                   Editar
                 </Button>
               </Link>
               <ConfirmDelete
                 disabled={processing}
                 onConfirm={() => destroy(route('historial-revisiones.destroy', rev.id))}
-                description="La revisión se eliminará definitivamente."
+                description="La revisión se eliminará definitivamente de la base de datos."
               >
-                <Button size="sm" variant="destructive" disabled={processing}>
+                <Button size="sm" variant="destructive" className="rounded-lg" disabled={processing}>
                   Eliminar
                 </Button>
               </ConfirmDelete>
@@ -226,189 +240,167 @@ export default function Index({
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title="Historial de revisiones" />
-      <div className="m-4 space-y-4">
-        <section className="rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-          <ListSection
-            title="Historial de revisiones"
-            description="Registra cuándo y quién modificó el estado de cada archivo."
-            actions={
-              <>
-                <Link href={route('historial-revisiones.create')}>
-                  <Button>Registrar revisión</Button>
-                </Link>
-              </>
-            }
-          />
-        </section>
-        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-          <CardContent className="space-y-4">
-            <DataTable
-              columns={columns}
-              data={revisiones.data}
-              filterKey="archivo"
-              placeholder="Buscar por archivo"
-              externalSort={sort}
-              onSortChange={(col, dir) => {
-                if (!col || !dir) return;
-                handleSort(col, dir as 'asc' | 'desc');
-              }}
-              endActions={
-                <>
-                  <Sheet open={openFilter} onOpenChange={setOpenFilter}>
-                    <SheetTrigger asChild>
-                      <Button variant="outline">Filtros</Button>
-                    </SheetTrigger>
-                    <SheetContent className="space-y-6 sm:w-[420px]">
-                      <SheetHeader>
-                        <SheetTitle>Filtrar revisiones</SheetTitle>
-                      </SheetHeader>
-                      <div className="space-y-4 px-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="search">Buscar</Label>
-                          <Input
-                            id="search"
-                            value={filtersState.search}
-                            onChange={(e) =>
-                              setFiltersState((prev) => ({
-                                ...prev,
-                                search: e.target.value,
-                              }))
-                            }
-                            placeholder="Archivo, revisor o estado"
-                          />
-                        </div>
-                        <div className="space-y-2 relative">
-                          <Label htmlFor="revisor">Revisor</Label>
-                          <Input
-                            id="revisor"
-                            value={filtersState.revisor}
-                            onChange={(e) =>
-                              setFiltersState((prev) => ({
-                                ...prev,
-                                revisor: e.target.value,
-                              }))
-                            }
-                            placeholder="Escribí un revisor..."
-                            autoComplete="off"
-                          />
-                          {filtersState.revisor && revisores.length > 0 && (
-                            <div className="absolute left-0 top-full z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-input bg-popover text-sm shadow-sm">
-                              {revisores
-                                .filter((r) => r.toLowerCase().includes(filtersState.revisor.toLowerCase()))
-                                .slice(0, 8)
-                                .map((rev) => (
-                                  <button
-                                    key={rev}
-                                    type="button"
-                                    className="flex w-full items-center px-3 py-2 text-left hover:bg-muted"
-                                    onClick={() =>
-                                      setFiltersState((prev) => ({
-                                        ...prev,
-                                        revisor: rev,
-                                      }))
-                                    }
-                                  >
-                                    {rev}
-                                  </button>
-                                ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="estados-previo">Estado previo</Label>
-                          <div className="grid grid-cols-1 gap-3">
-                            {estados.map((estado) => (
-                              <label key={`prev-${estado}`} className="flex items-center gap-2 text-sm">
-                                <Checkbox
-                                  checked={filtersState.estado_previo.includes(estado)}
-                                  onCheckedChange={(checked) => {
-                                    setFiltersState((prev) => {
-                                      const current = prev.estado_previo;
-                                      return {
-                                        ...prev,
-                                        estado_previo: checked
-                                          ? [...current, estado]
-                                          : current.filter((item) => item !== estado),
-                                      };
-                                    });
-                                  }}
-                                />
-                                {estado}
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="estados-nuevo">Estado nuevo</Label>
-                          <div className="grid grid-cols-1 gap-3">
-                            {estados.map((estado) => (
-                              <label key={`nuevo-${estado}`} className="flex items-center gap-2 text-sm">
-                                <Checkbox
-                                  checked={filtersState.estado_nuevo.includes(estado)}
-                                  onCheckedChange={(checked) => {
-                                    setFiltersState((prev) => {
-                                      const current = prev.estado_nuevo;
-                                      return {
-                                        ...prev,
-                                        estado_nuevo: checked
-                                          ? [...current, estado]
-                                          : current.filter((item) => item !== estado),
-                                      };
-                                    });
-                                  }}
-                                />
-                                {estado}
-                              </label>
-                            ))}
-                          </div>
-                        </div>
+      <Head title="Historial de revisiones | Gestión" />
+      <ListLayout
+        title="Historial de revisiones"
+        createHref={route('historial-revisiones.create')}
+        createLabel="Registrar revisión"
+        paginationLinks={revisiones.links}
+        actions={
+          <>
+            <Sheet open={openFilter} onOpenChange={setOpenFilter}>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="rounded-lg">Filtros</Button>
+              </SheetTrigger>
+              <SheetContent className="space-y-6 sm:w-[420px]">
+                <SheetHeader>
+                  <SheetTitle>Filtrar revisiones</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-4 px-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="search">Buscar</Label>
+                    <Input
+                      id="search"
+                      value={localSearch}
+                      onChange={(e) => setLocalSearch(e.target.value)}
+                      placeholder="Archivo, revisor o estado"
+                      className="rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-2 relative">
+                    <Label htmlFor="revisor">Revisor</Label>
+                    <Input
+                      id="revisor"
+                      value={filtersState.revisor}
+                      onChange={(e) =>
+                        setFiltersState((prev) => ({
+                          ...prev,
+                          revisor: e.target.value,
+                        }))
+                      }
+                      placeholder="Escribí un revisor..."
+                      autoComplete="off"
+                      className="rounded-lg"
+                    />
+                    {filtersState.revisor && revisores.length > 0 && (
+                      <div className="absolute left-0 top-full z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-input bg-popover text-sm shadow-sm">
+                        {revisores
+                          .filter((r) => r.toLowerCase().includes(filtersState.revisor.toLowerCase()))
+                          .slice(0, 8)
+                          .map((rev) => (
+                            <button
+                              key={rev}
+                              type="button"
+                              className="flex w-full items-center px-3 py-2 text-left hover:bg-muted"
+                              onClick={() =>
+                                setFiltersState((prev) => ({
+                                  ...prev,
+                                  revisor: rev,
+                                }))
+                              }
+                            >
+                              {rev}
+                            </button>
+                          ))}
                       </div>
-                      <SheetFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                        <SheetClose asChild>
-                          <Button variant="ghost" type="button" onClick={clearFilters}>
-                            Limpiar
-                          </Button>
-                        </SheetClose>
-                        <SheetClose asChild>
-                          <Button
-                            type="button"
-                            onClick={() => {
-                              applyFilters(filtersState);
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Estado previo</Label>
+                    <div className="grid grid-cols-1 gap-3 mt-1">
+                      {estados.map((estado) => (
+                        <label key={`prev-${estado}`} className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                          <Checkbox
+                            checked={filtersState.estado_previo.includes(estado)}
+                            onCheckedChange={(checked) => {
+                              setFiltersState((prev) => {
+                                const current = prev.estado_previo;
+                                return {
+                                  ...prev,
+                                  estado_previo: checked
+                                    ? [...current, estado]
+                                    : current.filter((item) => item !== estado),
+                                };
+                              });
                             }}
-                          >
-                            Aplicar filtros
-                          </Button>
-                        </SheetClose>
-                      </SheetFooter>
-                    </SheetContent>
-                  </Sheet>
-                  <Button
-                    variant="secondary"
-                    className="bg-white text-slate-900 hover:bg-muted"
-                    type="button"
-                    onClick={clearFilters}
-                  >
-                    Limpiar
-                  </Button>
-                  <a href="/historial-revisiones/report" target="_blank" rel="noreferrer">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
-                    >
-                      <FileText className="h-4 w-4" />
+                          />
+                          <span className="capitalize">{estado}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Estado nuevo</Label>
+                    <div className="grid grid-cols-1 gap-3 mt-1">
+                      {estados.map((estado) => (
+                        <label key={`nuevo-${estado}`} className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                          <Checkbox
+                            checked={filtersState.estado_nuevo.includes(estado)}
+                            onCheckedChange={(checked) => {
+                              setFiltersState((prev) => {
+                                const current = prev.estado_nuevo;
+                                return {
+                                  ...prev,
+                                  estado_nuevo: checked
+                                    ? [...current, estado]
+                                    : current.filter((item) => item !== estado),
+                                };
+                              });
+                            }}
+                          />
+                          <span className="capitalize">{estado}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <SheetFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <SheetClose asChild>
+                    <Button variant="ghost" type="button" className="rounded-lg" onClick={clearFilters}>
+                      Limpiar
                     </Button>
-                  </a>
-                </>
-              }
-            />
-            <div className="flex justify-end">
-              <Pagination links={revisiones.links} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Button
+                      type="button"
+                      className="rounded-lg"
+                      onClick={() => {
+                        applyFilters(filtersState);
+                      }}
+                    >
+                      Aplicar filtros
+                    </Button>
+                  </SheetClose>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+            {openFilter || filtersState.search || filtersState.revisor || filtersState.estado_previo.length > 0 || filtersState.estado_nuevo.length > 0 ? (
+              <Button
+                variant="secondary"
+                className="rounded-lg"
+                type="button"
+                onClick={clearFilters}
+              >
+                Limpiar Filtros
+              </Button>
+            ) : null}
+
+          </>
+        }
+      >
+        <DataTable
+          columns={columns}
+          data={revisiones.data}
+          search={localSearch}
+          onSearchChange={setLocalSearch}
+          searchPlaceholder="Buscar por archivo, revisor..."
+          externalSort={sort}
+          onSortChange={(col, dir) => {
+            if (!col || !dir) return;
+            handleSort(col, dir as 'asc' | 'desc');
+          }}
+        />
+      </ListLayout>
     </AppLayout>
   );
 }

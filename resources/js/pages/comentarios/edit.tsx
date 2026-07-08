@@ -1,5 +1,3 @@
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,6 +13,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import { type FormEvent } from 'react';
+import { FormLayout } from '@/components/form-layout';
 
 interface Option {
   id: number;
@@ -56,7 +55,7 @@ export default function Edit({
     put(route('comentarios.update', comentario.id));
   };
 
-  const renderSelect = (
+  const renderSelectField = (
     label: string,
     value: number | '',
     onChange: (val: number | '') => void,
@@ -67,7 +66,7 @@ export default function Edit({
     <div className="space-y-1.5">
       <Label>{label}</Label>
       <Select value={value === '' ? '' : String(value)} onValueChange={(v) => onChange(Number(v))}>
-        <SelectTrigger>
+        <SelectTrigger className="rounded-lg">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
@@ -85,35 +84,44 @@ export default function Edit({
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title={`Editar comentario #${comentario.id}`} />
-        <div className="flex justify-center px-4 py-6">
-        <div className="w-full max-w-2xl space-y-4 rounded-2xl border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 shadow-lg backdrop-blur-sm dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">        <form onSubmit={handleSubmit} className="space-y-4">
-          {renderSelect('Archivo', data.archivo_id, (val) => setData('archivo_id', val), archivos, errors.archivo_id)}
-          {renderSelect('Autor', data.user_id, (val) => setData('user_id', val), usuarios, errors.user_id)}
+      <div className="mx-auto max-w-7xl px-4 py-8 animate-in fade-in duration-300">
+        <FormLayout
+          onSubmit={handleSubmit}
+          processing={processing}
+          cancelHref={route('comentarios.index')}
+          submitLabel="Guardar cambios"
+          maxWidth="max-w-4xl"
+        >
+          <div className="space-y-4">
+            {/* Row 1: Archivo & Autor */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {renderSelectField('Archivo', data.archivo_id, (val) => setData('archivo_id', val), archivos, errors.archivo_id)}
+              {renderSelectField('Autor', data.user_id, (val) => setData('user_id', val), usuarios, errors.user_id)}
+            </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="cuerpo">Comentario</Label>
-            <Textarea
-              id="cuerpo"
-              value={data.cuerpo}
-              onChange={(e) => setData('cuerpo', e.target.value)}
-            />
-            {errors.cuerpo && <p className="text-sm text-destructive">{errors.cuerpo}</p>}
+            {/* Row 2: Comentario */}
+            <div className="space-y-1.5">
+              <Label htmlFor="cuerpo">Comentario</Label>
+              <Textarea
+                id="cuerpo"
+                value={data.cuerpo}
+                onChange={(e) => setData('cuerpo', e.target.value)}
+                className="rounded-lg resize-none min-h-[120px]"
+              />
+              {errors.cuerpo && <p className="text-sm text-destructive">{errors.cuerpo}</p>}
+            </div>
+
+            {/* Row 3: Destacado */}
+            <div className="flex items-center gap-2 pt-2">
+              <Checkbox
+                id="destacado"
+                checked={data.destacado}
+                onCheckedChange={(val) => setData('destacado', Boolean(val))}
+              />
+              <Label htmlFor="destacado" className="cursor-pointer font-medium select-none">Destacado</Label>
+            </div>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="destacado"
-              checked={data.destacado}
-              onCheckedChange={(val) => setData('destacado', Boolean(val))}
-            />
-            <Label htmlFor="destacado">Destacado</Label>
-          </div>
-
-          <Button disabled={processing} type="submit">
-            Guardar cambios
-          </Button>
-        </form>
-      </div>
+        </FormLayout>
       </div>
     </AppLayout>
   );

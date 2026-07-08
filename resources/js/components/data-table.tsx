@@ -13,7 +13,7 @@ import {
   VisibilityState,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -43,6 +43,10 @@ interface DataTableProps<TData, TValue> {
     column: string;
     direction: "asc" | "desc";
   };
+  // Props para búsqueda externa/servidor
+  search?: string;
+  onSearchChange?: (value: string) => void;
+  searchPlaceholder?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -53,6 +57,9 @@ export function DataTable<TData, TValue>({
   endActions,
   onSortChange,
   externalSort,
+  search,
+  onSearchChange,
+  searchPlaceholder,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -105,6 +112,17 @@ export function DataTable<TData, TValue>({
             }
             className="max-w-sm"
           />
+        )}
+        {onSearchChange !== undefined && (
+          <div className="relative w-full max-w-sm">
+            <Input
+              placeholder={searchPlaceholder ?? "Buscar..."}
+              value={search ?? ""}
+              onChange={(event) => onSearchChange(event.target.value)}
+              className="pl-9 h-10 w-full rounded-lg bg-background border-border"
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          </div>
         )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {endActions}

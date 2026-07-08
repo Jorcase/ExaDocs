@@ -3,10 +3,7 @@ import { type BreadcrumbItem, type Url } from '@/types';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDelete } from '@/components/confirm-delete';
-import Pagination from '@/components/pagination';
-import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/data-table';
-import { ListSection } from '@/components/list-section';
 import { type ColumnDef } from '@tanstack/react-table';
 import { ArrowUpDown } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
@@ -23,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ListLayout } from '@/components/list-layout';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -36,6 +34,7 @@ interface Plan {
     nombre: string;
     anio_plan: number;
     estado: 'vigente' | 'no_vigente' | 'discontinuado';
+    optativas_requeridas?: number;
     carrera?: {
         id: number;
         nombre: string;
@@ -78,11 +77,6 @@ export default function Index({
         direction: (filters?.direction as 'asc' | 'desc') ?? 'desc',
     });
     const [showCarreraSuggestions, setShowCarreraSuggestions] = useState(false);
-    const carreraNombre = useMemo(() => {
-        if (!carreras) return '';
-        const found = carreras.find((c) => c.id === (filters?.carrera_id ?? null));
-        return found?.nombre ?? '';
-    }, [carreras, filters?.carrera_id]);
 
     const [localFilters, setLocalFilters] = useState({
         search: filters?.search ?? '',
@@ -147,11 +141,13 @@ export default function Index({
             )
             .slice(0, 8);
     }, [carreras, localFilters.carrera_nombre]);
+
     const hideSuggestions =
         filteredCarreras.length === 1 &&
         localFilters.carrera_id &&
         filteredCarreras[0].id === localFilters.carrera_id &&
         filteredCarreras[0].nombre.toLowerCase() === localFilters.carrera_nombre.trim().toLowerCase();
+
     const columns: ColumnDef<Plan>[] = useMemo(
         () => [
             {
@@ -180,6 +176,7 @@ export default function Index({
                         <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
                     </Button>
                 ),
+                cell: ({ getValue }) => <span className="font-semibold text-slate-900 dark:text-slate-100">{getValue<string>()}</span>,
             },
             {
                 accessorKey: 'anio_plan',
@@ -195,6 +192,20 @@ export default function Index({
                 ),
             },
             {
+                accessorKey: 'optativas_requeridas',
+                header: ({ column }) => (
+                    <Button
+                        variant="ghost"
+                        className="px-0 font-semibold"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    >
+                        Optativas
+                        <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+                ),
+                cell: ({ getValue }) => <span className="font-medium">{getValue<number>() ?? 0}</span>,
+            },
+            {
                 accessorKey: 'estado',
                 header: ({ column }) => (
                     <Button
@@ -206,7 +217,7 @@ export default function Index({
                         <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
                     </Button>
                 ),
-                cell: ({ getValue }) => <span className="capitalize">{getValue<string>()}</span>,
+                cell: ({ getValue }) => <span className="capitalize text-xs font-semibold">{getValue<string>()}</span>,
             },
             {
                 id: 'carrera',
@@ -232,16 +243,16 @@ export default function Index({
                     return (
                         <div className="flex w-full justify-end gap-2">
                             <Link href={route('planes-estudio.edit', plan.id)}>
-                                <Button size="sm" variant="secondary">
+                                <Button size="sm" variant="secondary" className="rounded-lg">
                                     Editar
                                 </Button>
                             </Link>
                             <ConfirmDelete
                                 disabled={processing}
                                 onConfirm={() => destroy(route('planes-estudio.destroy', plan.id))}
-                                description="El plan de estudio se eliminará definitivamente."
+                                description="El plan de estudio se eliminará definitivamente de la base de datos."
                             >
-                                <Button size="sm" variant="destructive" disabled={processing}>
+                                <Button size="sm" variant="destructive" className="rounded-lg" disabled={processing}>
                                     Eliminar
                                 </Button>
                             </ConfirmDelete>
@@ -255,212 +266,206 @@ export default function Index({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Planes de estudio | Listado" />
-            <div className="m-4 space-y-4">
-                <section className="rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-                    <ListSection
-                        title="Planes de estudio"
-                        description="Administra los planes vigentes según sus carreras y años."
-                        actions={
-                            <Link href={route('planes-estudio.create')}>
-                                <Button>Crear plan</Button>
-                            </Link>
-                        }
-                    />
-                </section>
-            <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-                    <CardContent className="space-y-4">
-                        <DataTable
-                            columns={columns}
-                            data={planes.data}
-                            filterKey="nombre"
-                            placeholder="Buscar por nombre..."
-                            externalSort={sort}
-                            onSortChange={(col, dir) => {
-                                if (!col || !dir) {
-                                    handleSort('id', 'desc');
-                                    return;
-                                }
-                                handleSort(col, dir as 'asc' | 'desc');
-                            }}
-                            endActions={
-                                <>
-                                    <Sheet open={open} onOpenChange={setOpen}>
-                                        <SheetTrigger asChild>
-                                            <Button variant="outline">Filtros</Button>
-                                        </SheetTrigger>
-                                        <SheetContent className="space-y-6 sm:w-[420px]">
-                                            <SheetHeader>
-                                                <SheetTitle>Filtrar planes</SheetTitle>
-                                            </SheetHeader>
-                                            <div className="space-y-4 px-2">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="search">Nombre</Label>
-                                                    <Input
-                                                        id="search"
-                                                        value={localFilters.search}
-                                                        onChange={(e) =>
-                                                            setLocalFilters((prev) => ({
-                                                                ...prev,
-                                                                search: e.target.value,
-                                                            }))
-                                                        }
-                                                        placeholder="Buscar por nombre..."
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="anio">Año</Label>
-                                                    <Input
-                                                        id="anio"
-                                                        type="number"
-                                                        value={localFilters.anio ?? ''}
-                                                        onChange={(e) =>
-                                                            setLocalFilters((prev) => ({
-                                                                ...prev,
-                                                                anio: e.target.value,
-                                                            }))
-                                                        }
-                                                        placeholder="Ej: 2024"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Estado</Label>
-                                                    <div className="grid grid-cols-1 gap-3">
-                                                        {[
-                                                            { value: 'vigente', label: 'Vigente' },
-                                                            { value: 'no_vigente', label: 'No vigente' },
-                                                            { value: 'discontinuado', label: 'Discontinuado' },
-                                                        ].map((estado) => (
-                                                            <label
-                                                                key={estado.value}
-                                                                className="flex items-center gap-2 text-sm"
-                                                            >
-                                                                <Checkbox
-                                                                    checked={localFilters.estado?.includes(estado.value)}
-                                                                    onCheckedChange={(checked) => {
-                                                                        setLocalFilters((prev) => {
-                                                                            const current = prev.estado ?? [];
-                                                                            return {
-                                                                                ...prev,
-                                                                                estado: checked
-                                                                                    ? [...current, estado.value]
-                                                                                    : current.filter((e) => e !== estado.value),
-                                                                            };
-                                                                        });
-                                                                    }}
-                                                                />
-                                                                {estado.label}
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2 relative overflow-visible">
-                                                    <Label htmlFor="carrera">Carrera</Label>
-                                                    <Input
-                                                        id="carrera"
-                                                        autoComplete="off"
-                                                        value={localFilters.carrera_nombre}
-                                                        onChange={(e) =>
-                                                            setLocalFilters((prev) => ({
-                                                                ...prev,
-                                                                carrera_nombre: e.target.value,
-                                                                carrera_id: null,
-                                                            }))
-                                                        }
-                                                        onFocus={() => setShowCarreraSuggestions(true)}
-                                                        onBlur={() => {
-                                                            setTimeout(() => setShowCarreraSuggestions(false), 120);
+            <Head title="Planes de estudio | Gestión" />
+            <ListLayout
+                title="Gestión de Planes de estudio"
+                createHref={route('planes-estudio.create')}
+                createLabel="Crear plan"
+                paginationLinks={planes.links}
+                actions={
+                    <>
+                        <Sheet open={open} onOpenChange={setOpen}>
+                            <SheetTrigger asChild>
+                                <Button variant="outline" className="rounded-lg">Filtros</Button>
+                            </SheetTrigger>
+                            <SheetContent className="space-y-6 sm:w-[420px]">
+                                <SheetHeader>
+                                    <SheetTitle>Filtrar planes</SheetTitle>
+                                </SheetHeader>
+                                <div className="space-y-4 px-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="search">Nombre</Label>
+                                        <Input
+                                            id="search"
+                                            value={localFilters.search}
+                                            onChange={(e) =>
+                                                setLocalFilters((prev) => ({
+                                                    ...prev,
+                                                    search: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="Buscar por nombre..."
+                                            className="rounded-lg"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="anio">Año</Label>
+                                        <Input
+                                            id="anio"
+                                            type="number"
+                                            value={localFilters.anio ?? ''}
+                                            onChange={(e) =>
+                                                setLocalFilters((prev) => ({
+                                                    ...prev,
+                                                    anio: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="Ej: 2024"
+                                            className="rounded-lg"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">Estado</Label>
+                                        <div className="grid grid-cols-1 gap-3 mt-1">
+                                            {[
+                                                { value: 'vigente', label: 'Vigente' },
+                                                { value: 'no_vigente', label: 'No vigente' },
+                                                { value: 'discontinuado', label: 'Discontinuado' },
+                                            ].map((estado) => (
+                                                <label
+                                                    key={estado.value}
+                                                    className="flex items-center gap-2 text-sm cursor-pointer select-none"
+                                                >
+                                                    <Checkbox
+                                                        checked={localFilters.estado?.includes(estado.value)}
+                                                        onCheckedChange={(checked) => {
+                                                            setLocalFilters((prev) => {
+                                                                const current = prev.estado ?? [];
+                                                                return {
+                                                                    ...prev,
+                                                                    estado: checked
+                                                                        ? [...current, estado.value]
+                                                                        : current.filter((e) => e !== estado.value),
+                                                                };
+                                                            });
                                                         }}
-                                                        placeholder="Escribí una carrera..."
                                                     />
-                                                    {showCarreraSuggestions &&
-                                                        localFilters.carrera_nombre.trim().length > 0 &&
-                                                        filteredCarreras.length > 0 &&
-                                                        !hideSuggestions && (
-                                                        <div className="absolute left-0 top-full mt-1 z-50 w-full max-h-48 overflow-auto rounded-md border border-input bg-popover text-sm shadow-sm">
-                                                            {filteredCarreras.map((carrera) => (
-                                                                <button
-                                                                    key={carrera.id}
-                                                                    type="button"
-                                                                    className="flex w-full items-center px-3 py-2 text-left hover:bg-muted"
-                                                                    onClick={() =>
-                                                                    {
-                                                                        setLocalFilters((prev) => ({
-                                                                            ...prev,
-                                                                            carrera_nombre: carrera.nombre,
-                                                                            carrera_id: carrera.id,
-                                                                        }));
-                                                                        setShowCarreraSuggestions(false);
-                                                                    }
-                                                                    }
-                                                                >
-                                                                    {carrera.nombre}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                    <span className="font-medium">{estado.label}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 relative overflow-visible">
+                                        <Label htmlFor="carrera">Carrera</Label>
+                                        <Input
+                                            id="carrera"
+                                            autoComplete="off"
+                                            value={localFilters.carrera_nombre}
+                                            onChange={(e) =>
+                                                setLocalFilters((prev) => ({
+                                                    ...prev,
+                                                    carrera_nombre: e.target.value,
+                                                    carrera_id: null,
+                                                }))
+                                            }
+                                            onFocus={() => setShowCarreraSuggestions(true)}
+                                            onBlur={() => {
+                                                setTimeout(() => setShowCarreraSuggestions(false), 120);
+                                            }}
+                                            placeholder="Escribí una carrera..."
+                                            className="rounded-lg"
+                                        />
+                                        {showCarreraSuggestions &&
+                                            localFilters.carrera_nombre.trim().length > 0 &&
+                                            filteredCarreras.length > 0 &&
+                                            !hideSuggestions && (
+                                            <div className="absolute left-0 top-full mt-1 z-50 w-full max-h-48 overflow-auto rounded-md border border-input bg-popover text-sm shadow-sm">
+                                                {filteredCarreras.map((carrera) => (
+                                                    <button
+                                                        key={carrera.id}
+                                                        type="button"
+                                                        className="flex w-full items-center px-3 py-2 text-left hover:bg-muted"
+                                                        onClick={() =>
+                                                        {
+                                                            setLocalFilters((prev) => ({
+                                                                ...prev,
+                                                                carrera_nombre: carrera.nombre,
+                                                                carrera_id: carrera.id,
+                                                            }));
+                                                            setShowCarreraSuggestions(false);
+                                                        }
+                                                        }
+                                                    >
+                                                        {carrera.nombre}
+                                                    </button>
+                                                ))}
                                             </div>
-                                            <SheetFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                                                <SheetClose asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const cleaned = {
-                                                                search: '',
-                                                                anio: '',
-                                                                estado: [],
-                                                                carrera_id: null,
-                                                                carrera_nombre: '',
-                                                            };
-                                                            setLocalFilters(cleaned);
-                                                            applyFilters(cleaned);
-                                                        }}
-                                                    >
-                                                        Limpiar
-                                                    </Button>
-                                                </SheetClose>
-                                                <SheetClose asChild>
-                                                    <Button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            applyFilters(localFilters);
-                                                        }}
-                                                    >
-                                                        Aplicar filtros
-                                                    </Button>
-                                                </SheetClose>
-                                            </SheetFooter>
-                                        </SheetContent>
-                                    </Sheet>
-                                    <Button
-                                        variant="secondary"
-                                        className="bg-white text-slate-900 hover:bg-muted"
-                                        type="button"
-                                        onClick={() => {
-                                            const cleaned = {
-                                                search: '',
-                                                anio: '',
-                                                estado: [],
-                                                carrera_id: null,
-                                                carrera_nombre: '',
-                                            };
-                                            setLocalFilters(cleaned);
-                                            applyFilters(cleaned);
-                                        }}
-                                    >
-                                        Limpiar
-                                    </Button>
-                                </>
-                            }
-                        />
-                        <div className="flex justify-end">
-                            <Pagination links={planes.links} />
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <SheetFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                                    <SheetClose asChild>
+                                        <Button
+                                            variant="ghost"
+                                            type="button"
+                                            className="rounded-lg"
+                                            onClick={() => {
+                                                const cleaned = {
+                                                    search: '',
+                                                    anio: '',
+                                                    estado: [],
+                                                    carrera_id: null,
+                                                    carrera_nombre: '',
+                                                };
+                                                setLocalFilters(cleaned);
+                                                applyFilters(cleaned);
+                                            }}
+                                        >
+                                            Limpiar
+                                        </Button>
+                                    </SheetClose>
+                                    <SheetClose asChild>
+                                        <Button
+                                            type="button"
+                                            className="rounded-lg"
+                                            onClick={() => {
+                                                applyFilters(localFilters);
+                                            }}
+                                        >
+                                            Aplicar filtros
+                                        </Button>
+                                    </SheetClose>
+                                </SheetFooter>
+                            </SheetContent>
+                        </Sheet>
+                        {open || localFilters.search || localFilters.anio || localFilters.estado.length > 0 || localFilters.carrera_id ? (
+                            <Button
+                                variant="secondary"
+                                className="rounded-lg"
+                                type="button"
+                                onClick={() => {
+                                    const cleaned = {
+                                        search: '',
+                                        anio: '',
+                                        estado: [],
+                                        carrera_id: null,
+                                        carrera_nombre: '',
+                                    };
+                                    setLocalFilters(cleaned);
+                                    applyFilters(cleaned);
+                                }}
+                            >
+                                Limpiar Filtros
+                            </Button>
+                        ) : null}
+                    </>
+                }
+            >
+                <DataTable
+                    columns={columns}
+                    data={planes.data}
+                    filterKey="nombre"
+                    placeholder="Buscar por nombre..."
+                    externalSort={sort}
+                    onSortChange={(col, dir) => {
+                        if (!col || !dir) {
+                            handleSort('id', 'desc');
+                            return;
+                        }
+                        handleSort(col, dir as 'asc' | 'desc');
+                    }}
+                />
+            </ListLayout>
         </AppLayout>
     );
 }

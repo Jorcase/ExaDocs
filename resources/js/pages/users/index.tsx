@@ -1,14 +1,13 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import { Input } from '@/components/ui/input';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { route } from 'ziggy-js';
-import Pagination from '@/components/pagination';
 import type { Url } from '@/types';
+import { ListLayout } from '@/components/list-layout';
 
 type UserRow = {
   id: number;
@@ -44,103 +43,100 @@ export default function Index({ users, filters }: Props) {
 
   return (
     <AppLayout breadcrumbs={[{ title: 'Usuarios', href: route('users.index') }]}>
-      <Head title="Usuarios" />
-      <div className="m-4 space-y-4">
-        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-lg font-semibold">Gestión de usuarios</CardTitle>
-              <p className="text-sm text-muted-foreground">Administra usuarios y sus roles.</p>
-            </div>
-            <Link href={route('users.create')}>
-              <Button>Crear usuario</Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                placeholder="Buscar por nombre o email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-64"
-              />
-              <Button variant="secondary" onClick={applySearch}>
-                Buscar
-              </Button>
+      <Head title="Usuarios | Gestión" />
+      <ListLayout
+        title="Gestión de Usuarios"
+        createHref={route('users.create')}
+        createLabel="Crear usuario"
+        paginationLinks={users.links}
+        actions={
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Buscar por nombre o email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && applySearch()}
+              className="w-64 rounded-lg"
+            />
+            <Button variant="secondary" onClick={applySearch} className="rounded-lg">
+              Buscar
+            </Button>
+            {search && (
               <Button
                 variant="ghost"
                 onClick={() => {
                   setSearch('');
                   router.get(route('users.index'), {}, { preserveScroll: true, replace: true });
                 }}
+                className="rounded-lg"
               >
                 Limpiar
               </Button>
-            </div>
-
-            <div className="overflow-x-auto rounded-md border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted">
-                  <tr className="text-left">
-                    <th className="px-4 py-2">ID</th>
-                    <th className="px-4 py-2">Nombre</th>
-                    <th className="px-4 py-2">Email</th>
-                    <th className="px-4 py-2">Roles</th>
-                    <th className="px-4 py-2">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.data.map((user) => (
-                    <tr key={user.id} className="border-t">
-                      <td className="px-4 py-2">{user.id}</td>
-                      <td className="px-4 py-2">{user.name}</td>
-                      <td className="px-4 py-2">{user.email}</td>
-                      <td className="px-4 py-2 space-x-1">
-                        {user.roles?.length
-                          ? user.roles.map((r) => (
-                              <Badge key={r.name} variant="secondary">
-                                {r.name}
-                              </Badge>
-                            ))
-                          : <span className="text-muted-foreground">Sin rol</span>}
-                      </td>
-                      <td className="px-4 py-2">
-                        <div className="flex gap-2">
-                          <Link href={route('users.edit', user.id)}>
-                            <Button size="sm" variant="secondary">
-                              Editar
-                            </Button>
-                          </Link>
-                          <ConfirmDelete
-                            disabled={processing}
-                            onConfirm={() => destroy(route('users.destroy', user.id))}
-                            description="El usuario se eliminará definitivamente."
-                          >
-                            <Button size="sm" variant="destructive" disabled={processing}>
-                              Eliminar
-                            </Button>
-                          </ConfirmDelete>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {users.data.length === 0 && (
-                    <tr>
-                      <td className="px-4 py-6 text-center text-muted-foreground" colSpan={5}>
-                        No hay usuarios.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex justify-end">
-              <Pagination links={users.links} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            )}
+          </div>
+        }
+      >
+        <div className="overflow-x-auto rounded-lg border border-border/60">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-muted text-muted-foreground uppercase text-[10px] font-mono tracking-wider border-b">
+              <tr>
+                <th className="px-4 py-3 w-[70px]">ID</th>
+                <th className="px-4 py-3">Nombre</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Roles</th>
+                <th className="px-4 py-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {users.data.map((user) => (
+                <tr key={user.id} className="hover:bg-muted/40 transition-colors">
+                  <td className="px-4 py-3 font-medium">{user.id}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">{user.name}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{user.email}</td>
+                  <td className="px-4 py-3">
+                    {user.roles?.length ? (
+                      <div className="flex flex-wrap gap-1">
+                        {user.roles.map((r) => (
+                          <Badge key={r.name} variant="secondary" className="text-[10px] capitalize">
+                            {r.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Sin rol</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Link href={route('users.edit', user.id)}>
+                        <Button size="sm" variant="secondary" className="rounded-lg">
+                          Editar
+                        </Button>
+                      </Link>
+                      <ConfirmDelete
+                        disabled={processing}
+                        onConfirm={() => destroy(route('users.destroy', user.id))}
+                        description="El usuario se eliminará definitivamente de la base de datos."
+                      >
+                        <Button size="sm" variant="destructive" className="rounded-lg" disabled={processing}>
+                          Eliminar
+                        </Button>
+                      </ConfirmDelete>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {users.data.length === 0 && (
+                <tr>
+                  <td className="px-4 py-6 text-center text-muted-foreground" colSpan={5}>
+                    No hay usuarios cargados.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </ListLayout>
     </AppLayout>
   );
 }

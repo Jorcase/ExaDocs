@@ -39,6 +39,29 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
         $user = $request->user();
+        $userData = null;
+        $activeCarreraId = null;
+        $userCarreras = collect();
+
+        if ($user) {
+            $user->loadMissing('profile');
+            $userData = $user->toArray();
+            $userData['avatar'] = $user->profile->avatar_url ?? $user->avatar ?? null;
+
+            $userCarreras = $user->carreras()->select('carreras.id', 'carreras.nombre', 'carreras.codigo')->get();
+            if ($userCarreras->isEmpty() && $user->profile && $user->profile->carrera_principal_id) {
+                $user->carreras()->syncWithoutDetaching([
+                    $user->profile->carrera_principal_id => ['es_principal' => true]
+                ]);
+                $userCarreras = $user->carreras()->select('carreras.id', 'carreras.nombre', 'carreras.codigo')->get();
+            }
+            $activeCarreraId = $request->session()->get('active_carrera_id');
+            if (!$activeCarreraId && $userCarreras->isNotEmpty()) {
+                $principal = $user->carreras()->wherePivot('es_principal', true)->value('carreras.id');
+                $activeCarreraId = $principal ?? $userCarreras->first()->id;
+                $request->session()->put('active_carrera_id', (int) $activeCarreraId);
+            }
+        }
         $canNotifPersonal = $user && $user->can('view_notifipersonal');
 
         $notifItems = collect();
@@ -58,9 +81,12 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
-                'user' => $request->user(),
-                'permissions' => $request->user() ?
-                $request->user()->getAllPermissions()->pluck('name') : []   
+                'user' => $userData,
+                'permissions' => $user
+                    ? $user->getAllPermissions()->pluck('name')
+                    : [],
+                'active_carrera_id' => $activeCarreraId ? (int) $activeCarreraId : null,
+                'carreras' => $userCarreras,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'notifications' => $canNotifPersonal ? [

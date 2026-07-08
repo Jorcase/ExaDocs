@@ -3,14 +3,12 @@ import { type BreadcrumbItem, type Url } from '@/types';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDelete } from '@/components/confirm-delete';
-import Pagination from '@/components/pagination';
-import { Card, CardContent } from '@/components/ui/card';
 import { route } from 'ziggy-js';
 import { DataTable } from '@/components/data-table';
 import { type ColumnDef } from '@tanstack/react-table';
 import { ArrowUpDown } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
-import { ListSection } from '@/components/list-section';
+import { ListLayout } from '@/components/list-layout';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -92,6 +90,7 @@ export default function Index({ tipos, filters }: { tipos: TiposPaginated; filte
                         <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
                     </Button>
                 ),
+                cell: ({ getValue }) => <span className="font-semibold text-slate-900 dark:text-slate-100">{getValue<string>()}</span>,
             },
             {
                 accessorKey: 'descripcion',
@@ -107,7 +106,7 @@ export default function Index({ tipos, filters }: { tipos: TiposPaginated; filte
                     return (
                         <div className="flex w-full justify-end gap-2 pr-1">
                             <Link href={route('tipo-archivos.edit', tipo.id)}>
-                                <Button size="sm" variant="secondary">
+                                <Button size="sm" variant="secondary" className="rounded-lg">
                                     Editar
                                 </Button>
                             </Link>
@@ -116,9 +115,9 @@ export default function Index({ tipos, filters }: { tipos: TiposPaginated; filte
                                 onConfirm={() =>
                                     destroy(route('tipo-archivos.destroy', tipo.id))
                                 }
-                                description="El tipo de archivo se eliminará definitivamente."
+                                description="El tipo de archivo se eliminará definitivamente de la base de datos."
                             >
-                                <Button size="sm" variant="destructive" disabled={processing}>
+                                <Button size="sm" variant="destructive" className="rounded-lg" disabled={processing}>
                                     Eliminar
                                 </Button>
                             </ConfirmDelete>
@@ -132,38 +131,25 @@ export default function Index({ tipos, filters }: { tipos: TiposPaginated; filte
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Tipos de archivo | Listado" />
-            <div className="m-4 space-y-4">
-                <section className="rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-                    <ListSection
-                        title="Tipo de archivos"
-                        description="Catálogo de formatos permitidos"
-                        actions={
-                            <Link href={route('tipo-archivos.create')}>
-                                <Button>Crear tipo</Button>
-                            </Link>
-                        }
-                    />
-                </section>
-                <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-                    <CardContent className="space-y-4">
-                        <DataTable
-                            columns={columns}
-                            data={tipos.data}
-                            filterKey="nombre"
-                            placeholder="Buscar por nombre..."
-                            externalSort={sort}
-                            onSortChange={(col, dir) => {
-                                if (!col || !dir) return;
-                                handleSort(col, dir as 'asc' | 'desc');
-                            }}
-                        />
-                        <div className="flex justify-end">
-                            <Pagination links={tipos.links} />
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+            <Head title="Tipos de archivo | Gestión" />
+            <ListLayout
+                title="Gestión de Tipos de archivo"
+                createHref={route('tipo-archivos.create')}
+                createLabel="Crear tipo"
+                paginationLinks={tipos.links}
+            >
+                <DataTable
+                    columns={columns}
+                    data={tipos.data}
+                    filterKey="nombre"
+                    placeholder="Buscar por nombre..."
+                    externalSort={sort}
+                    onSortChange={(col, dir) => {
+                        if (!col || !dir) return;
+                        handleSort(col, dir as 'asc' | 'desc');
+                    }}
+                />
+            </ListLayout>
         </AppLayout>
     );
 }

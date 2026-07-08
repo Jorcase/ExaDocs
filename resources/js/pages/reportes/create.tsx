@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +13,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import { type FormEvent } from 'react';
+import { FormLayout } from '@/components/form-layout';
 
 interface Option {
   id: number;
@@ -48,7 +48,7 @@ export default function Create({
     post(route('reportes.store'));
   };
 
-  const renderSelect = (
+  const renderSelectField = (
     label: string,
     value: number | '',
     onChange: (val: number | '') => void,
@@ -59,7 +59,7 @@ export default function Create({
     <div className="space-y-1.5">
       <Label>{label}</Label>
       <Select value={value === '' ? '' : String(value)} onValueChange={(v) => onChange(Number(v))}>
-        <SelectTrigger>
+        <SelectTrigger className="rounded-lg">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
@@ -77,54 +77,72 @@ export default function Create({
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Crear reporte" />
-        <div className="flex justify-center px-4 py-6">
-        <div className="w-full max-w-2xl space-y-4 rounded-2xl border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 shadow-lg backdrop-blur-sm dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">        <form onSubmit={handleSubmit} className="space-y-4">
-          {renderSelect('Archivo', data.archivo_id, (val) => setData('archivo_id', val), archivos, errors.archivo_id)}
-          {renderSelect('Reportante', data.reportante_id, (val) => setData('reportante_id', val), usuarios, errors.reportante_id)}
-
-          <div className="space-y-1.5">
-            <Label>Motivo</Label>
-            <Select value={data.motivo} onValueChange={(v) => setData('motivo', v as any)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="spam">Spam</SelectItem>
-                <SelectItem value="contenido_incorrecto">Contenido incorrecto</SelectItem>
-                <SelectItem value="copyright">Copyright</SelectItem>
-                <SelectItem value="otro">Otro</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.motivo && <p className="text-sm text-destructive">{errors.motivo}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="detalle">Detalle</Label>
-            <Textarea
-              id="detalle"
-              value={data.detalle}
-              onChange={(e) => setData('detalle', e.target.value)}
-            />
-            {errors.detalle && <p className="text-sm text-destructive">{errors.detalle}</p>}
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Estado</Label>
-              <Select value={data.estado} onValueChange={(v) => setData('estado', v as any)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pendiente">Pendiente</SelectItem>
-                  <SelectItem value="en_revision">En revisión</SelectItem>
-                  <SelectItem value="resuelto">Resuelto</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.estado && <p className="text-sm text-destructive">{errors.estado}</p>}
+      <div className="mx-auto max-w-7xl px-4 py-8 animate-in fade-in duration-300">
+        <FormLayout
+          onSubmit={handleSubmit}
+          processing={processing}
+          cancelHref={route('reportes.index')}
+          submitLabel="Crear reporte"
+          maxWidth="max-w-4xl"
+        >
+          <div className="space-y-4">
+            {/* Row 1: Archivo & Reportante */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {renderSelectField('Archivo', data.archivo_id, (val) => setData('archivo_id', val), archivos, errors.archivo_id)}
+              {renderSelectField('Reportante', data.reportante_id, (val) => setData('reportante_id', val), usuarios, errors.reportante_id)}
             </div>
+
+            {/* Row 2: Motivo & Estado */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Motivo</Label>
+                <Select value={data.motivo} onValueChange={(v) => setData('motivo', v as any)}>
+                  <SelectTrigger className="rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="spam">Spam</SelectItem>
+                    <SelectItem value="contenido_incorrecto">Contenido incorrecto</SelectItem>
+                    <SelectItem value="copyright">Copyright</SelectItem>
+                    <SelectItem value="otro">Otro</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.motivo && <p className="text-sm text-destructive">{errors.motivo}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Estado</Label>
+                <Select value={data.estado} onValueChange={(v) => setData('estado', v as any)}>
+                  <SelectTrigger className="rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendiente">Pendiente</SelectItem>
+                    <SelectItem value="en_revision">En revisión</SelectItem>
+                    <SelectItem value="resuelto">Resuelto</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.estado && <p className="text-sm text-destructive">{errors.estado}</p>}
+              </div>
+            </div>
+
+            {/* Row 3: Detalle */}
             <div className="space-y-1.5">
-              {renderSelect('Resuelto por', data.resuelto_por, (val) => setData('resuelto_por', val), usuarios, errors.resuelto_por, 'Opcional')}
+              <Label htmlFor="detalle">Detalle</Label>
+              <Textarea
+                id="detalle"
+                placeholder="Detalles adicionales del reporte..."
+                value={data.detalle}
+                onChange={(e) => setData('detalle', e.target.value)}
+                className="rounded-lg resize-none min-h-[100px]"
+              />
+              {errors.detalle && <p className="text-sm text-destructive">{errors.detalle}</p>}
+            </div>
+
+            {/* Row 4: Resuelto por & Resuelto en */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {renderSelectField('Resuelto por', data.resuelto_por, (val) => setData('resuelto_por', val), usuarios, errors.resuelto_por, 'Opcional')}
+
               <div className="space-y-1.5">
                 <Label htmlFor="resuelto_en">Resuelto en</Label>
                 <Input
@@ -132,17 +150,13 @@ export default function Create({
                   type="datetime-local"
                   value={data.resuelto_en ?? ''}
                   onChange={(e) => setData('resuelto_en', e.target.value)}
+                  className="rounded-lg"
                 />
                 {errors.resuelto_en && <p className="text-sm text-destructive">{errors.resuelto_en}</p>}
               </div>
             </div>
           </div>
-
-          <Button disabled={processing} type="submit">
-            Guardar reporte
-          </Button>
-        </form>
-      </div>
+        </FormLayout>
       </div>
     </AppLayout>
   );

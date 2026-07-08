@@ -98,4 +98,16 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Archivo::class, 'archivo_user_saved')->withTimestamps();
     }
+
+    public function carreras()
+    {
+        return $this->belongsToMany(Carrera::class, 'carrera_user')
+            ->withPivot('plan_estudio_id', 'es_principal')
+            ->withTimestamps();
+    }
+
+    public function progresos()
+    {
+        return $this->hasMany(MateriaUserProgreso::class);
+    }
 }

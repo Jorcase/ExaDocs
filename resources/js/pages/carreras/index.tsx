@@ -3,10 +3,7 @@ import { type BreadcrumbItem, type Url } from '@/types';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDelete } from '@/components/confirm-delete';
-import Pagination from '@/components/pagination';
-import { Card, CardContent } from '@/components/ui/card';
 import { route } from 'ziggy-js';
-import { ListSection } from '@/components/list-section';
 import { DataTable } from '@/components/data-table';
 import { type ColumnDef } from '@tanstack/react-table';
 import { ArrowUpDown, FileSpreadsheet, FileText } from 'lucide-react';
@@ -23,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useMemo, useState, useEffect } from 'react';
+import { ListLayout } from '@/components/list-layout';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -151,10 +149,10 @@ export default function Index({
                     </Button>
                 ),
                 cell: ({ row }) => (
-                    <div>
-                        <p className="font-semibold leading-tight">{row.original.nombre}</p>
+                    <div className="space-y-0.5">
+                        <p className="font-semibold leading-tight text-slate-900 dark:text-slate-100">{row.original.nombre}</p>
                         {row.original.descripcion && (
-                            <p className="text-sm text-muted-foreground line-clamp-2">
+                            <p className="text-xs text-muted-foreground line-clamp-2">
                                 {row.original.descripcion}
                             </p>
                         )}
@@ -172,6 +170,11 @@ export default function Index({
                         Código
                         <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
                     </Button>
+                ),
+                cell: ({ getValue }) => (
+                    <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded-md border border-border/60">
+                        {getValue<string>()}
+                    </span>
                 ),
             },
             {
@@ -201,7 +204,7 @@ export default function Index({
                         <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
                     </Button>
                 ),
-                cell: ({ getValue }) => <span className="capitalize">{getValue<string>()}</span>,
+                cell: ({ getValue }) => <span className="capitalize text-xs font-semibold">{getValue<string>()}</span>,
             },
             {
                 id: 'actions',
@@ -212,16 +215,16 @@ export default function Index({
                     return (
                         <div className="flex w-full justify-end gap-2">
                             <Link href={route('carreras.edit', carrera.id)}>
-                                <Button size="sm" variant="secondary">
+                                <Button size="sm" variant="secondary" className="rounded-lg">
                                     Editar
                                 </Button>
                             </Link>
                             <ConfirmDelete
-                                description="La carrera se eliminará definitivamente."
+                                description="La carrera se eliminará definitivamente de la base de datos."
                                 disabled={processing}
                                 onConfirm={() => destroy(route('carreras.destroy', carrera.id))}
                             >
-                                <Button size="sm" variant="destructive" disabled={processing}>
+                                <Button size="sm" variant="destructive" className="rounded-lg" disabled={processing}>
                                     Eliminar
                                 </Button>
                             </ConfirmDelete>
@@ -232,6 +235,7 @@ export default function Index({
         ],
         [destroy, processing],
     );
+
     const handleSort = (columnId: string, direction?: 'asc' | 'desc') => {
         const nextDirection =
             direction ??
@@ -246,232 +250,225 @@ export default function Index({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Carreras | Listado" />
-            <div className="m-4 space-y-4">
-                <section className="rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-                    <ListSection
-                        title="Carreras"
-                        description="Controla las carreras habilitadas, su tipo y estado."
-                        actions={
-                            <Link href={route('carreras.create')}>
-                                <Button>Crear carrera</Button>
-                            </Link>
-                        }
-                    />
-                </section>
-                <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-                    <CardContent className="space-y-4">
-                        <DataTable
-                            columns={columns}
-                            data={carreras.data}
-                            filterKey="nombre"
-                            placeholder="Buscar por nombre..."
-                            externalSort={sort}
-                            onSortChange={(col, dir) => {
-                                if (!col || !dir) return;
-                                handleSort(col, dir as 'asc' | 'desc');
-                            }}
-                            endActions={
-                                <>
-                                    <Sheet open={open} onOpenChange={setOpen}>
-                                        <SheetTrigger asChild>
-                                            <Button variant="outline">Filtros</Button>
-                                        </SheetTrigger>
-                                        <SheetContent className="space-y-6 sm:w-[420px]">
-                                            <SheetHeader>
-                                                <SheetTitle>Filtrar carreras</SheetTitle>
-                                            </SheetHeader>
-                                            <div className="space-y-4 px-2">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="search">Nombre</Label>
-                                                    <Input
-                                                        id="search"
-                                                        value={localFilters.search}
-                                                        onChange={(e) =>
+            <Head title="Carreras | Gestión" />
+            <ListLayout
+                title="Gestión de Carreras"
+                createHref={route('carreras.create')}
+                createLabel="Crear carrera"
+                paginationLinks={carreras.links}
+                actions={
+                    <>
+                        <Sheet open={open} onOpenChange={setOpen}>
+                            <SheetTrigger asChild>
+                                <Button variant="outline" className="rounded-lg">Filtros</Button>
+                            </SheetTrigger>
+                            <SheetContent className="space-y-6 sm:w-[420px]">
+                                <SheetHeader>
+                                    <SheetTitle>Filtrar carreras</SheetTitle>
+                                </SheetHeader>
+                                <div className="space-y-4 px-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="search">Nombre</Label>
+                                        <Input
+                                            id="search"
+                                            value={localFilters.search}
+                                            onChange={(e) =>
+                                                setLocalFilters((prev) => ({
+                                                    ...prev,
+                                                    search: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="Buscar por nombre..."
+                                            className="rounded-lg"
+                                        />
+                                    </div>
+                                    <div className="space-y-2 relative">
+                                        <Label htmlFor="codigo">Código</Label>
+                                        <Input
+                                            id="codigo"
+                                            autoComplete="off"
+                                            value={localFilters.codigo}
+                                            onChange={(e) =>
+                                                setLocalFilters((prev) => ({
+                                                    ...prev,
+                                                    codigo: e.target.value,
+                                                }))
+                                            }
+                                            placeholder="Ej: ING-101"
+                                            className="rounded-lg"
+                                        />
+                                        {localFilters.codigo && filteredCodigos.length > 0 && (
+                                            <div className="absolute left-0 top-full z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-input bg-popover text-sm shadow-sm">
+                                                {filteredCodigos.map((cod) => (
+                                                    <button
+                                                        key={cod}
+                                                        type="button"
+                                                        className="flex w-full items-center px-3 py-2 text-left hover:bg-muted"
+                                                        onClick={() =>
                                                             setLocalFilters((prev) => ({
                                                                 ...prev,
-                                                                search: e.target.value,
+                                                                codigo: cod,
                                                             }))
                                                         }
-                                                        placeholder="Buscar por nombre..."
-                                                    />
-                                                </div>
-                                                <div className="space-y-2 relative">
-                                                    <Label htmlFor="codigo">Código</Label>
-                                                    <Input
-                                                        id="codigo"
-                                                        autoComplete="off"
-                                                        value={localFilters.codigo}
-                                                        onChange={(e) =>
-                                                            setLocalFilters((prev) => ({
-                                                                ...prev,
-                                                                codigo: e.target.value,
-                                                            }))
-                                                        }
-                                                        placeholder="Ej: ING-101"
-                                                    />
-                                                    {localFilters.codigo && filteredCodigos.length > 0 && (
-                                                        <div className="absolute left-0 top-full z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-input bg-popover text-sm shadow-sm">
-                                                            {filteredCodigos.map((cod) => (
-                                                                <button
-                                                                    key={cod}
-                                                                    type="button"
-                                                                    className="flex w-full items-center px-3 py-2 text-left hover:bg-muted"
-                                                                    onClick={() =>
-                                                                        setLocalFilters((prev) => ({
-                                                                            ...prev,
-                                                                            codigo: cod,
-                                                                        }))
-                                                                    }
-                                                                >
-                                                                    {cod}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="space-y-2 relative">
-                                                    <Label>Tipo de carrera</Label>
-                                                    <div className="grid grid-cols-1 gap-3">
-                                                        {tipos?.map((tipo) => (
-                                                            <label
-                                                                key={tipo.id}
-                                                                className="flex items-center gap-2 text-sm"
-                                                            >
-                                                                <Checkbox
-                                                                    checked={localFilters.tipo_carrera_ids?.includes(tipo.id)}
-                                                                    onCheckedChange={(checked) =>
-                                                                        setLocalFilters((prev) => {
-                                                                            const current = prev.tipo_carrera_ids ?? [];
-                                                                            return {
-                                                                                ...prev,
-                                                                                tipo_carrera_ids: checked
-                                                                                    ? [...current, tipo.id]
-                                                                                    : current.filter((t) => t !== tipo.id),
-                                                                            };
-                                                                        })
-                                                                    }
-                                                                />
-                                                                {tipo.nombre}
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Estado</Label>
-                                                    <div className="grid grid-cols-1 gap-3">
-                                                        {[
-                                                            { value: 'activa', label: 'Activa' },
-                                                            { value: 'inactiva', label: 'Inactiva' },
-                                                        ].map((estado) => (
-                                                            <label
-                                                                key={estado.value}
-                                                                className="flex items-center gap-2 text-sm"
-                                                            >
-                                                                <Checkbox
-                                                                    checked={localFilters.estado?.includes(estado.value)}
-                                                                    onCheckedChange={(checked) => {
-                                                                        setLocalFilters((prev) => {
-                                                                            const current = prev.estado ?? [];
-                                                                            return {
-                                                                                ...prev,
-                                                                                estado: checked
-                                                                                    ? [...current, estado.value]
-                                                                                    : current.filter((e) => e !== estado.value),
-                                                                            };
-                                                                        });
-                                                                    }}
-                                                                />
-                                                                {estado.label}
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                                    >
+                                                        {cod}
+                                                    </button>
+                                                ))}
                                             </div>
-                                            <SheetFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                                                <SheetClose asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const cleaned = {
-                                                                search: '',
-                                                                codigo: '',
-                                                                estado: [],
-                                                                tipo_carrera_ids: [],
-                                                            };
-                                                            setLocalFilters(cleaned);
-                                                            applyFilters(cleaned);
+                                        )}
+                                    </div>
+                                    <div className="space-y-2 relative">
+                                        <Label className="text-sm font-medium">Tipo de carrera</Label>
+                                        <div className="grid grid-cols-1 gap-3 mt-1">
+                                            {tipos?.map((tipo) => (
+                                                <label
+                                                    key={tipo.id}
+                                                    className="flex items-center gap-2 text-sm cursor-pointer select-none"
+                                                >
+                                                    <Checkbox
+                                                        checked={localFilters.tipo_carrera_ids?.includes(tipo.id)}
+                                                        onCheckedChange={(checked) =>
+                                                            setLocalFilters((prev) => {
+                                                                const current = prev.tipo_carrera_ids ?? [];
+                                                                return {
+                                                                    ...prev,
+                                                                    tipo_carrera_ids: checked
+                                                                        ? [...current, tipo.id]
+                                                                        : current.filter((t) => t !== tipo.id),
+                                                                };
+                                                            })
+                                                        }
+                                                    />
+                                                    <span className="font-medium">{tipo.nombre}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">Estado</Label>
+                                        <div className="grid grid-cols-1 gap-3 mt-1">
+                                            {[
+                                                { value: 'activa', label: 'Activa' },
+                                                { value: 'inactiva', label: 'Inactiva' },
+                                            ].map((estado) => (
+                                                <label
+                                                    key={estado.value}
+                                                    className="flex items-center gap-2 text-sm cursor-pointer select-none"
+                                                >
+                                                    <Checkbox
+                                                        checked={localFilters.estado?.includes(estado.value)}
+                                                        onCheckedChange={(checked) => {
+                                                            setLocalFilters((prev) => {
+                                                                const current = prev.estado ?? [];
+                                                                return {
+                                                                    ...prev,
+                                                                    estado: checked
+                                                                        ? [...current, estado.value]
+                                                                        : current.filter((e) => e !== estado.value),
+                                                                };
+                                                            });
                                                         }}
-                                                    >
-                                                        Limpiar
-                                                    </Button>
-                                                </SheetClose>
-                                                <SheetClose asChild>
-                                                    <Button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            applyFilters(localFilters);
-                                                        }}
-                                                    >
-                                                        Aplicar filtros
-                                                    </Button>
-                                                </SheetClose>
-                                            </SheetFooter>
-                                        </SheetContent>
-                                    </Sheet>
-                                    <Button
-                                        variant="secondary"
-                                        className="bg-white text-slate-900 hover:bg-muted"
-                                        type="button"
-                                        onClick={() => {
-                                            const cleaned = {
-                                                search: '',
-                                                codigo: '',
-                                                estado: [],
-                                                tipo_carrera_ids: [],
-                                            };
-                                            setLocalFilters(cleaned);
-                                            applyFilters(cleaned);
-                                        }}
-                                    >
-                                        Limpiar
-                                    </Button>
-                                    <a
-                                        href={route('carreras.report', buildParams(localFilters))}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                    >
+                                                    />
+                                                    <span className="font-medium">{estado.label}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <SheetFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                                    <SheetClose asChild>
                                         <Button
-                                            variant="outline"
-                                            size="icon"
-                                            className="border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                                            variant="ghost"
+                                            type="button"
+                                            className="rounded-lg"
+                                            onClick={() => {
+                                                const cleaned = {
+                                                    search: '',
+                                                    codigo: '',
+                                                    estado: [],
+                                                    tipo_carrera_ids: [],
+                                                };
+                                                setLocalFilters(cleaned);
+                                                applyFilters(cleaned);
+                                            }}
                                         >
-                                            <FileText className="h-4 w-4" />
+                                            Limpiar
                                         </Button>
-                                    </a>
-                                    <a
-                                        href={route('carreras.export', buildParams(localFilters))}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                    >
+                                    </SheetClose>
+                                    <SheetClose asChild>
                                         <Button
-                                            variant="outline"
-                                            size="icon"
-                                            className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                                            type="button"
+                                            className="rounded-lg"
+                                            onClick={() => {
+                                                applyFilters(localFilters);
+                                            }}
                                         >
-                                            <FileSpreadsheet className="h-4 w-4" />
+                                            Aplicar filtros
                                         </Button>
-                                    </a>
-                                </>
-                            }
-                        />
-                        <div className="flex justify-end">
-                            <Pagination links={carreras.links} />
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+                                    </SheetClose>
+                                </SheetFooter>
+                            </SheetContent>
+                        </Sheet>
+                        {open || localFilters.search || localFilters.codigo || localFilters.estado.length > 0 || localFilters.tipo_carrera_ids.length > 0 ? (
+                            <Button
+                                variant="secondary"
+                                className="rounded-lg"
+                                type="button"
+                                onClick={() => {
+                                    const cleaned = {
+                                        search: '',
+                                        codigo: '',
+                                        estado: [],
+                                        tipo_carrera_ids: [],
+                                    };
+                                    setLocalFilters(cleaned);
+                                    applyFilters(cleaned);
+                                }}
+                            >
+                                Limpiar Filtros
+                            </Button>
+                        ) : null}
+                        <a
+                            href={route('carreras.report', buildParams(localFilters))}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="border-red-500/20 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-400 rounded-lg"
+                            >
+                                <FileText className="h-4 w-4" />
+                            </Button>
+                        </a>
+                        <a
+                            href={route('carreras.export', buildParams(localFilters))}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg"
+                            >
+                                <FileSpreadsheet className="h-4 w-4" />
+                            </Button>
+                        </a>
+                    </>
+                }
+            >
+                <DataTable
+                    columns={columns}
+                    data={carreras.data}
+                    filterKey="nombre"
+                    placeholder="Buscar por nombre..."
+                    externalSort={sort}
+                    onSortChange={(col, dir) => {
+                        if (!col || !dir) return;
+                        handleSort(col, dir as 'asc' | 'desc');
+                    }}
+                />
+            </ListLayout>
         </AppLayout>
     );
 }

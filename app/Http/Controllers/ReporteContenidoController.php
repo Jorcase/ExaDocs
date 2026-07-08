@@ -101,33 +101,19 @@ class ReporteContenidoController extends Controller
 
     public function store(StoreReporteContenidoRequest $request)
     {
-        $reporte = ReporteContenido::create($request->validated());
+        $reporte = ReporteContenido::create(array_merge($request->validated(), [
+            'reportante_id' => Auth::id(),
+            'estado' => 'pendiente',
+        ]));
 
-        $autorArchivo = $reporte->archivo?->autor;
-        if (config('mail.notifications_enabled') && $autorArchivo && $autorArchivo->email) {
-            Mail::to($autorArchivo->email)->send(new ReporteContenidoMail($reporte));
-        }
-
-        // Notificación in-app para autor del archivo
-        NotificacionService::crearParaAutorArchivo($autorArchivo, [
-            'actor_id' => Auth::id(),
-            'archivo_id' => $reporte->archivo_id,
-            'tipo' => 'reporte',
-            'titulo' => 'Tu archivo fue reportado',
-            'mensaje' => $reporte->archivo?->titulo ?? '',
-            'data' => [
-                'motivo' => $reporte->motivo,
-            ],
-        ]);
-
-        return redirect()->route('reportes.index')
-            ->with('success', "Reporte #{$reporte->id} creado.");
+        return redirect()->back()
+            ->with('success', "El reporte ha sido enviado a la administración.");
     }
 
     public function edit(ReporteContenido $reporte)
     {
         return inertia('reportes/edit', [
-            'reporte' => $reporte,
+            'reporte' => $reporte->load(['archivo:id,titulo', 'reportante:id,name', 'moderador:id,name']),
             'archivos' => Archivo::select('id', 'titulo')->orderBy('titulo')->get(),
             'usuarios' => User::select('id', 'name')->orderBy('name')->get(),
         ]);
@@ -135,7 +121,15 @@ class ReporteContenidoController extends Controller
 
     public function update(UpdateReporteContenidoRequest $request, ReporteContenido $reporte)
     {
-        $reporte->update($request->validated());
+        $data = $request->validated();
+        if ($data['estado'] === 'resuelto') {
+            $data['resuelto_por'] = Auth::id();
+            $data['resuelto_en'] = now();
+        } else {
+            $data['resuelto_por'] = null;
+            $data['resuelto_en'] = null;
+        }
+        $reporte->update($data);
 
         return redirect()->route('reportes.index')
             ->with('success', "Reporte #{$reporte->id} actualizado.");

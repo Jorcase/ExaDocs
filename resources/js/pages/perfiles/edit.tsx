@@ -2,36 +2,33 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
-import { type FormEvent, useEffect } from 'react';
+import { useState, type FormEvent, useEffect } from 'react';
+import { Camera, User, GraduationCap } from 'lucide-react';
+import CarreraMultiselect from '@/components/carrera-multiselect';
+import { FormLayout } from '@/components/form-layout';
 
 interface Option {
   id: number;
   name?: string;
   email?: string;
   nombre?: string;
+  codigo?: string;
 }
 
 interface Perfil {
   id: number;
   user_id: number;
-  user?: { id: number; name: string; email: string };
-  documento?: string | null;
-  carrera_principal_id?: number | null;
+  nombre_completo: string;
+  documento: string;
+  carrera_principal_id: number;
   telefono?: string | null;
-  avatar_path?: string | null;
-  avatar_url?: string | null;
+  avatar?: string | null;
   bio?: string | null;
+  carreras_secundarias?: number[];
 }
 
 export default function Edit({
@@ -45,23 +42,22 @@ export default function Edit({
 }) {
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Perfiles', href: route('perfiles.index') },
-    { title: `Editar #${perfil.id}`, href: route('perfiles.edit', perfil.id) },
+    { title: `Editar perfil #${perfil.id}`, href: route('perfiles.edit', perfil.id) },
   ];
 
   const { data, setData, post, processing, errors } = useForm({
-    _method: 'put',
     user_id: perfil.user_id,
-    nombre_completo: perfil.nombre_completo ?? '',
-    documento: perfil.documento ?? '',
-    carrera_principal_id: perfil.carrera_principal_id ?? '',
+    nombre_completo: perfil.nombre_completo,
+    documento: perfil.documento,
+    carrera_principal_id: perfil.carrera_principal_id,
     telefono: perfil.telefono ?? '',
     avatar: null as File | null,
     bio: perfil.bio ?? '',
+    carreras_secundarias: perfil.carreras_secundarias ?? [],
+    _method: 'PUT',
   });
 
-  useEffect(() => {
-    setData('user_id', perfil.user_id);
-  }, [perfil.user_id, setData]);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(perfil.avatar ?? null);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -70,78 +66,136 @@ export default function Edit({
     });
   };
 
-  const renderSelect = (
-    label: string,
-    value: number | '',
-    onChange: (val: number | '') => void,
-    options: Option[],
-    error?: string,
-    placeholder = 'Seleccioná una opción',
-  ) => (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <Select value={value === '' ? '' : String(value)} onValueChange={(v) => onChange(Number(v))}>
-        <SelectTrigger>
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((opt) => (
-            <SelectItem key={opt.id} value={String(opt.id)}>
-              {opt.name ?? opt.email ?? opt.nombre ?? opt.id}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+  const details = (
+    <div className="space-y-6">
+      {/* Section 1: User Account & Photo */}
+      <div className="flex flex-col sm:flex-row items-center gap-6">
+        <div className="relative group shrink-0">
+          <div className="w-24 h-24 rounded-xl overflow-hidden border border-border bg-accent/40 dark:bg-muted relative">
+            {avatarPreview ? (
+              <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-primary dark:text-blue-400 text-3xl font-black bg-slate-100 dark:bg-neutral-900">
+                {(data.nombre_completo || 'U').slice(0, 1).toUpperCase()}
+              </div>
+            )}
+          </div>
+          <label className="absolute -bottom-1 -right-1 bg-primary dark:bg-blue-500 text-white p-2 rounded-lg shadow-lg cursor-pointer hover:scale-105 transition-transform flex items-center justify-center">
+            <Camera className="h-4 w-4" />
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setData('avatar', file);
+                if (file) {
+                  setAvatarPreview(URL.createObjectURL(file));
+                }
+              }}
+            />
+          </label>
+        </div>
+
+        <div className="flex-1 space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="user_id">Usuario Vinculado</Label>
+            <select
+              id="user_id"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-ring transition"
+              value={data.user_id ?? ''}
+              onChange={(e) => setData('user_id', e.target.value ? Number(e.target.value) : '')}
+            >
+              <option value="">Seleccioná un usuario</option>
+              {usuarios.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name ?? u.email ?? u.id}
+                </option>
+              ))}
+            </select>
+          </div>
+          {errors.user_id && <p className="text-xs text-destructive">{errors.user_id}</p>}
+          {errors.avatar && <p className="text-xs text-destructive font-semibold">{errors.avatar}</p>}
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-border/60 pt-5">
+        <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 border-b border-border/60 pb-3 mb-4">
+          <GraduationCap className="h-5 w-5 text-slate-400" />
+          <h3 className="text-base font-bold">Información Académica</h3>
+        </div>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="carrera">Carrera Principal</Label>
+            <CarreraMultiselect
+              carreras={carreras}
+              selectedIds={data.carrera_principal_id ? [Number(data.carrera_principal_id)] : []}
+              multiple={false}
+              excludeIds={data.carreras_secundarias}
+              onChange={(ids) => {
+                const id = ids[0] ?? '';
+                setData('carrera_principal_id', id);
+                if (id) {
+                  setData((prev) => ({
+                    ...prev,
+                    carrera_principal_id: id,
+                    carreras_secundarias: prev.carreras_secundarias.filter(x => x !== id)
+                  }));
+                }
+              }}
+              placeholder="Buscá carrera principal..."
+            />
+            {errors.carrera_principal_id && <p className="text-xs text-destructive">{errors.carrera_principal_id}</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Otras Carreras (Secundarias)</Label>
+            <CarreraMultiselect
+              carreras={carreras}
+              selectedIds={data.carreras_secundarias}
+              multiple={true}
+              excludeIds={data.carrera_principal_id ? [Number(data.carrera_principal_id)] : []}
+              onChange={(ids) => setData('carreras_secundarias', ids)}
+              placeholder="Buscá y agregá carreras..."
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 
-  return (
-    <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title={`Editar perfil #${perfil.id}`} />
-      <div className="flex justify-center px-4 py-6">
-        <div className="w-full max-w-2xl space-y-4 rounded-2xl border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 shadow-lg backdrop-blur-sm dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="hidden" name="user_id" value={data.user_id} />
-          <div className="space-y-1.5">
-            <Label>Usuario</Label>
-            <Input
-              value={
-                usuarios.find((u) => u.id === perfil.user_id)?.name ??
-                usuarios.find((u) => u.id === perfil.user_id)?.email ??
-                `ID ${perfil.user_id}`
-              }
-              disabled
-            />
-            {errors.user_id && <p className="text-sm text-destructive">{errors.user_id}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="nombre_completo">Nombre completo</Label>
-            <Input
-              id="nombre_completo"
-              value={data.nombre_completo}
-              onChange={(e) => setData('nombre_completo', e.target.value)}
-              placeholder="Tu nombre completo"
-            />
-            {errors.nombre_completo && <p className="text-sm text-destructive">{errors.nombre_completo}</p>}
-          </div>
-          {renderSelect(
-            'Carrera principal',
-            data.carrera_principal_id,
-            (val) => setData('carrera_principal_id', val),
-            carreras,
-            errors.carrera_principal_id,
-            'Opcional',
-          )}
+  const sidebar = (
+    <div className="space-y-5">
+      <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 border-b border-border/60 pb-3 mb-4">
+        <User className="h-5 w-5 text-slate-400" />
+        <h3 className="text-base font-bold">Información Personal</h3>
+      </div>
+      
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="nombre_completo">Nombre Completo</Label>
+          <Input
+            id="nombre_completo"
+            value={data.nombre_completo}
+            onChange={(e) => setData('nombre_completo', e.target.value)}
+            placeholder="Nombre del estudiante"
+            className="rounded-lg"
+          />
+          {errors.nombre_completo && <p className="text-xs text-destructive">{errors.nombre_completo}</p>}
+        </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="documento">Documento</Label>
+            <Label htmlFor="documento">DNI</Label>
             <Input
               id="documento"
               value={data.documento}
               onChange={(e) => setData('documento', e.target.value)}
+              placeholder="DNI"
+              className="rounded-lg"
             />
-            {errors.documento && <p className="text-sm text-destructive">{errors.documento}</p>}
+            {errors.documento && <p className="text-xs text-destructive">{errors.documento}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -150,42 +204,41 @@ export default function Edit({
               id="telefono"
               value={data.telefono}
               onChange={(e) => setData('telefono', e.target.value)}
+              placeholder="Teléfono"
+              className="rounded-lg"
             />
-            {errors.telefono && <p className="text-sm text-destructive">{errors.telefono}</p>}
+            {errors.telefono && <p className="text-xs text-destructive">{errors.telefono}</p>}
           </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="avatar">Avatar (imagen)</Label>
-            <Input
-              id="avatar"
-              type="file"
-              accept="image/*"
-              onChange={(e) => setData('avatar', e.target.files?.[0] ?? null)}
-            />
-            {errors.avatar && <p className="text-sm text-destructive">{errors.avatar}</p>}
-            {perfil.avatar_url && (
-              <div className="mt-2">
-                <p className="text-xs text-muted-foreground mb-1">Avatar actual</p>
-                <img src={perfil.avatar_url} alt={perfil.user_id.toString()} className="h-16 w-16 rounded-full object-cover border" />
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="bio">Bio</Label>
-            <Textarea
-              id="bio"
-              value={data.bio}
-              onChange={(e) => setData('bio', e.target.value)}
-            />
-            {errors.bio && <p className="text-sm text-destructive">{errors.bio}</p>}
-          </div>
-
-          <Button disabled={processing} type="submit">
-            Guardar cambios
-          </Button>
-        </form>
         </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="bio">Biografía</Label>
+          <Textarea
+            id="bio"
+            value={data.bio}
+            onChange={(e) => setData('bio', e.target.value)}
+            placeholder="Biografía académica..."
+            className="rounded-lg min-h-[140px] resize-none"
+          />
+          {errors.bio && <p className="text-xs text-destructive">{errors.bio}</p>}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <AppLayout breadcrumbs={breadcrumbs}>
+      <Head title={`Editar perfil #${perfil.id}`} />
+      <div className="mx-auto max-w-7xl px-4 py-8 space-y-6 animate-in fade-in duration-300">
+        <FormLayout
+          onSubmit={handleSubmit}
+          processing={processing}
+          cancelHref={route('perfiles.index')}
+          submitLabel="Guardar cambios"
+          sidebar={sidebar}
+        >
+          {details}
+        </FormLayout>
       </div>
     </AppLayout>
   );

@@ -47,12 +47,6 @@
     --color-input: var(--input);
     --color-ring: var(--ring);
 
-    --color-chart-1: var(--chart-1);
-    --color-chart-2: var(--chart-2);
-    --color-chart-3: var(--chart-3);
-    --color-chart-4: var(--chart-4);
-    --color-chart-5: var(--chart-5);
-
     --color-sidebar: var(--sidebar);
     --color-sidebar-foreground: var(--sidebar-foreground);
     --color-sidebar-primary: var(--sidebar-primary);
@@ -61,77 +55,157 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Academic Nexus Design System Tokens */
+    --color-surface-dim: var(--surface-dim);
+    --color-surface-bright: var(--surface-bright);
+    --color-surface-container-lowest: var(--surface-container-lowest);
+    --color-surface-container-low: var(--surface-container-low);
+    --color-surface-container: var(--surface-container);
+    --color-surface-container-high: var(--surface-container-high);
+    --color-surface-container-highest: var(--surface-container-highest);
+    
+    --color-on-surface: var(--on-surface);
+    --color-on-surface-variant: var(--on-surface-variant);
+    --color-outline: var(--outline);
+    --color-outline-variant: var(--outline-variant);
+
+    --color-primary-container: var(--primary-container);
+    --color-on-primary-container: var(--on-primary-container);
+    --color-secondary-container: var(--secondary-container);
+    --color-on-secondary-container: var(--on-secondary-container);
+    --color-tertiary: var(--tertiary);
+    --color-on-tertiary: var(--on-tertiary);
+    --color-tertiary-container: var(--tertiary-container);
+    --color-on-tertiary-container: var(--on-tertiary-container);
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.87 0 0);
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.87 0 0);
+    /* Base CSS Variables mapped to Academic Nexus Light Mode */
+    --background: #f1f3f5;
+    --foreground: #181c1e;
+    
+    --card: #ffffff;
+    --card-foreground: #181c1e;
+    
+    --popover: #ffffff;
+    --popover-foreground: #181c1e;
+    
+    --primary: #002045;
+    --primary-foreground: #ffffff;
+    
+    --secondary: #0061a5;
+    --secondary-foreground: #ffffff;
+    
+    --muted: #f1f4f6;
+    --muted-foreground: #43474e;
+    
+    --accent: #ebeef0;
+    --accent-foreground: #002045;
+    
+    --destructive: #ba1a1a;
+    --destructive-foreground: #ffffff;
+    
+    --border: #c4c6cf;
+    --input: #c4c6cf;
+    --ring: #0061a5;
+
+    --sidebar: #f1f3f5;
+    --sidebar-foreground: #181c1e;
+    --sidebar-primary: #002045;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #ebeef0;
+    --sidebar-accent-foreground: #002045;
+    --sidebar-border: #c4c6cf;
+    --sidebar-ring: #0061a5;
+
+    /* Specific Academic Nexus Custom Properties */
+    --surface-dim: #d7dadc;
+    --surface-bright: #f1f3f5;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f1f4f6;
+    --surface-container: #ebeef0;
+    --surface-container-high: #e5e9eb;
+    --surface-container-highest: #e0e3e5;
+    
+    --on-surface: #181c1e;
+    --on-surface-variant: #43474e;
+    --outline: #74777f;
+    --outline-variant: #c4c6cf;
+
+    --primary-container: #1a365d;
+    --on-primary-container: #86a0cd;
+    --secondary-container: #66affe;
+    --on-secondary-container: #004172;
+    --tertiary: #172328;
+    --on-tertiary: #ffffff;
+    --tertiary-container: #2c383d;
+    --on-tertiary-container: #94a1a8;
+
+    --radius: 0.5rem;
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.145 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.145 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.396 0.141 25.723);
-    --destructive-foreground: oklch(0.637 0.237 25.331);
-    --border: oklch(0.269 0 0);
-    --input: oklch(0.269 0 0);
-    --ring: oklch(0.439 0 0);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.985 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(0.269 0 0);
-    --sidebar-ring: oklch(0.439 0 0);
+    /* Base CSS Variables mapped to Deep Space-Blue Academic Nexus Dark Mode */
+    --background: #060b18;
+    --foreground: #e3e2e6;
+    
+    --card: #0b1224;
+    --card-foreground: #e3e2e6;
+    
+    --popover: #0b1224;
+    --popover-foreground: #e3e2e6;
+    
+    --primary: #adc7f7;
+    --primary-foreground: #002045;
+    
+    --secondary: #9fcaff;
+    --secondary-foreground: #001d37;
+    
+    --muted: #080d1a;
+    --muted-foreground: #c4c6cf;
+    
+    --accent: #111b33;
+    --accent-foreground: #e3e2e6;
+    
+    --destructive: #ffb4ab;
+    --destructive-foreground: #690005;
+    
+    --border: rgba(227, 226, 230, 0.2);
+    --input: rgba(227, 226, 230, 0.2);
+    --ring: #3b82f6;
+
+    --sidebar: #060b18;
+    --sidebar-foreground: #e3e2e6;
+    --sidebar-primary: #adc7f7;
+    --sidebar-primary-foreground: #002045;
+    --sidebar-accent: #111b33;
+    --sidebar-accent-foreground: #e3e2e6;
+    --sidebar-border: rgba(227, 226, 230, 0.2);
+    --sidebar-ring: #3b82f6;
+
+    /* Specific Academic Nexus Custom Properties */
+    --surface-dim: #03050c;
+    --surface-bright: #060b18;
+    --surface-container-lowest: #03050c;
+    --surface-container-low: #080d1a;
+    --surface-container: #0b1224;
+    --surface-container-high: #111b33;
+    --surface-container-highest: #182647;
+    
+    --on-surface: #e3e2e6;
+    --on-surface-variant: #c4c6cf;
+    --outline: #8d9199;
+    --outline-variant: rgba(227, 226, 230, 0.2);
+
+    --primary-container: #004481;
+    --on-primary-container: #d6e3ff;
+    --secondary-container: #00497e;
+    --on-secondary-container: #d2e4ff;
+    --tertiary: #bcc8cf;
+    --on-tertiary: #273338;
+    --tertiary-container: #3d494f;
+    --on-tertiary-container: #d8e4eb;
 }
 
 @layer base {

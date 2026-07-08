@@ -31,29 +31,28 @@ import { useInitials } from '@/hooks/use-initials';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-react';
+import { Link, usePage, router } from '@inertiajs/react';
+import { BookOpen, LayoutGrid, Menu, Search, Layers, Bell } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
+import { CarreraSelector } from './carrera-selector';
+import { AlertBell } from './alert-bell';
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
+        title: 'Inicio',
         href: dashboard(),
         icon: LayoutGrid,
     },
-];
-
-const rightNavItems: NavItem[] = [
     {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
+        title: 'Archivos',
+        href: '/archivos',
+        icon: BookOpen,
     },
     {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
+        title: 'Mis Cosas',
+        href: '/mis-cosas',
+        icon: Layers,
     },
 ];
 
@@ -68,9 +67,19 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
     const page = usePage<SharedData>();
     const { auth } = page.props;
     const getInitials = useInitials();
+
+    const notifications = page.props.notifications;
+    const bellItems = notifications?.items?.map((n: any) => ({
+        id: n.id,
+        titulo: n.titulo,
+        mensaje: n.mensaje,
+        created_at: n.created_at,
+        leido: !!n.leido_en,
+    })) ?? [];
+    const bellUnread = notifications?.total_unread ?? 0;
     return (
-        <>
-            <div className="border-b border-sidebar-border/80">
+        <div className="sticky top-0 z-50 w-full shadow-xs">
+            <div className="border-b border-[#002b5c] bg-[#002045] text-white dark:bg-[#0b121f] dark:text-foreground dark:border-outline-variant/40">
                 <div className="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
                     {/* Mobile Menu */}
                     <div className="lg:hidden">
@@ -79,7 +88,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="mr-2 h-[34px] w-[34px]"
+                                    className="mr-2 h-[34px] w-[34px] text-white/80 hover:text-white hover:bg-white/10 dark:text-foreground"
                                 >
                                     <Menu className="h-5 w-5" />
                                 </Button>
@@ -91,8 +100,8 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                 <SheetTitle className="sr-only">
                                     Navigation Menu
                                 </SheetTitle>
-                                <SheetHeader className="flex justify-start text-left">
-                                    <AppLogoIcon className="h-6 w-6 fill-current text-black dark:text-white" />
+                                <SheetHeader className="sr-only">
+                                    <SheetHeader>Menu Móvil</SheetHeader>
                                 </SheetHeader>
                                 <div className="flex h-full flex-1 flex-col space-y-4 p-4">
                                     <div className="flex h-full flex-col justify-between text-sm">
@@ -113,42 +122,47 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                                 </Link>
                                             ))}
                                         </div>
-
-                                        <div className="flex flex-col space-y-4">
-                                            {rightNavItems.map((item) => (
-                                                <a
-                                                    key={item.title}
-                                                    href={resolveUrl(item.href)}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center space-x-2 font-medium"
-                                                >
-                                                    {item.icon && (
-                                                        <Icon
-                                                            iconNode={item.icon}
-                                                            className="h-5 w-5"
-                                                        />
-                                                    )}
-                                                    <span>{item.title}</span>
-                                                </a>
-                                            ))}
-                                        </div>
                                     </div>
                                 </div>
                             </SheetContent>
                         </Sheet>
                     </div>
 
-                    <Link
-                        href={dashboard()}
-                        prefetch
-                        className="flex items-center space-x-2"
-                    >
-                        <AppLogo />
-                    </Link>
+                    <div className="flex items-center gap-3">
+                        <Link
+                            href={dashboard()}
+                            prefetch
+                            className="flex items-center space-x-2 shrink-0 text-white"
+                        >
+                            <AppLogo />
+                        </Link>
+                        <div className="hidden sm:block">
+                            <CarreraSelector />
+                        </div>
+                    </div>
+
+                    {/* Global Search Input in the center */}
+                    <div className="flex-1 max-w-sm mx-6 hidden md:block">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/60 dark:text-muted-foreground pointer-events-none" />
+                            <input
+                                type="text"
+                                placeholder="Buscar archivos..."
+                                className="w-full h-9 pl-9 pr-4 rounded-xl border border-white/20 bg-white/10 text-white placeholder-white/60 hover:bg-white/15 dark:border-border dark:bg-neutral-900/50 dark:hover:bg-neutral-900 dark:text-foreground dark:placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-white/20 dark:focus:ring-blue-500/20 transition"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        const val = e.currentTarget.value.trim();
+                                        if (val) {
+                                            router.get('/archivos', { search: val });
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
 
                     {/* Desktop Navigation */}
-                    <div className="ml-6 hidden h-full items-center space-x-6 lg:flex">
+                    <div className="ml-auto hidden h-full items-center space-x-6 lg:flex">
                         <NavigationMenu className="flex h-full items-stretch">
                             <NavigationMenuList className="flex h-full items-stretch space-x-2">
                                 {mainNavItems.map((item, index) => (
@@ -159,12 +173,10 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                         <Link
                                             href={item.href}
                                             className={cn(
-                                                navigationMenuTriggerStyle(),
-                                                isSameUrl(
-                                                    page.url,
-                                                    item.href,
-                                                ) && activeItemStyles,
-                                                'h-9 cursor-pointer px-3',
+                                                'h-9 cursor-pointer px-3 rounded-lg text-sm font-semibold inline-flex items-center transition',
+                                                isSameUrl(page.url, item.href)
+                                                    ? 'bg-white/15 text-white dark:bg-white/15 dark:text-white'
+                                                    : 'text-white/80 hover:text-white hover:bg-white/5 dark:text-white/80 dark:hover:text-white dark:hover:bg-white/10'
                                             )}
                                         >
                                             {item.icon && (
@@ -176,7 +188,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                             {item.title}
                                         </Link>
                                         {isSameUrl(page.url, item.href) && (
-                                            <div className="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-black dark:bg-white"></div>
+                                            <div className="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-white dark:bg-blue-400"></div>
                                         )}
                                     </NavigationMenuItem>
                                 ))}
@@ -184,48 +196,27 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                         </NavigationMenu>
                     </div>
 
-                    <div className="ml-auto flex items-center space-x-2">
-                        <div className="relative flex items-center space-x-1">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="group h-9 w-9 cursor-pointer"
-                            >
-                                <Search className="!size-5 opacity-80 group-hover:opacity-100" />
-                            </Button>
-                            <div className="hidden lg:flex">
-                                {rightNavItems.map((item) => (
-                                    <TooltipProvider
-                                        key={item.title}
-                                        delayDuration={0}
-                                    >
-                                        <Tooltip>
-                                            <TooltipTrigger>
-                                                <a
-                                                    href={resolveUrl(item.href)}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="group ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md bg-transparent p-0 text-sm font-medium text-accent-foreground ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
-                                                >
-                                                    <span className="sr-only">
-                                                        {item.title}
-                                                    </span>
-                                                    {item.icon && (
-                                                        <Icon
-                                                            iconNode={item.icon}
-                                                            className="size-5 opacity-80 group-hover:opacity-100"
-                                                        />
-                                                    )}
-                                                </a>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>{item.title}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                ))}
-                            </div>
+                    <div className="ml-4 flex items-center space-x-2">
+                        {/* Mobile Search Button (visible only on mobile) */}
+                        <div className="md:hidden">
+                            <Link href="/archivos">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9 text-white/80 hover:text-white hover:bg-white/10 dark:text-white/80 dark:hover:text-white dark:hover:bg-white/10"
+                                >
+                                    <Search className="h-5 w-5 opacity-80" />
+                                </Button>
+                            </Link>
                         </div>
+
+                        {/* Notification Bell */}
+                        <AlertBell
+                            items={bellItems}
+                            total={bellUnread}
+                            className="h-9 w-9 rounded-lg text-white/80 hover:text-white hover:bg-white/10 dark:text-white/80 dark:hover:text-white dark:hover:bg-white/10"
+                        />
+
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
@@ -251,12 +242,12 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                 </div>
             </div>
             {breadcrumbs.length > 1 && (
-                <div className="flex w-full border-b border-sidebar-border/70">
+                <div className="flex w-full border-b border-sidebar-border/70 bg-background/95 backdrop-blur-md">
                     <div className="mx-auto flex h-12 w-full items-center justify-start px-4 text-neutral-500 md:max-w-7xl">
                         <Breadcrumbs breadcrumbs={breadcrumbs} />
                     </div>
                 </div>
             )}
-        </>
+        </div>
     );
 }

@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,6 +6,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import { type FormEvent } from 'react';
+import { FormLayout } from '@/components/form-layout';
 
 interface TipoArchivo {
     id: number;
@@ -39,37 +39,41 @@ export default function Edit({ tipo }: { tipo: TipoArchivo }) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Tipos de archivo | Editar ${tipo.nombre}`} />
-            <div className="flex justify-center px-4 py-6">
-            <div className="w-full max-w-2xl space-y-4 rounded-2xl border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 shadow-lg backdrop-blur-sm dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label htmlFor="nombre">Nombre</Label>
-                        <Input
-                            id="nombre"
-                            value={data.nombre}
-                            onChange={(e) => setData('nombre', e.target.value)}
-                        />
-                        {errors.nombre && (
-                            <p className="text-sm text-destructive">{errors.nombre}</p>
-                        )}
-                    </div>
+            <div className="mx-auto max-w-7xl px-4 py-8 animate-in fade-in duration-300">
+                <FormLayout
+                    onSubmit={handleSubmit}
+                    processing={processing}
+                    cancelHref={route('tipo-archivos.index')}
+                    submitLabel="Guardar cambios"
+                >
+                    <div className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="nombre">Nombre</Label>
+                            <Input
+                                id="nombre"
+                                value={data.nombre}
+                                onChange={(e) => setData('nombre', e.target.value)}
+                                className="rounded-lg"
+                            />
+                            {errors.nombre && (
+                                <p className="text-sm text-destructive">{errors.nombre}</p>
+                            )}
+                        </div>
 
-                    <div className="space-y-1.5">
-                        <Label htmlFor="descripcion">Descripción</Label>
-                        <Textarea
-                            id="descripcion"
-                            value={data.descripcion}
-                            onChange={(e) => setData('descripcion', e.target.value)}
-                        />
-                        {errors.descripcion && (
-                            <p className="text-sm text-destructive">{errors.descripcion}</p>
-                        )}
+                        <div className="space-y-1.5">
+                            <Label htmlFor="descripcion">Descripción</Label>
+                            <Textarea
+                                id="descripcion"
+                                value={data.descripcion}
+                                onChange={(e) => setData('descripcion', e.target.value)}
+                                className="rounded-lg resize-none min-h-[100px]"
+                            />
+                            {errors.descripcion && (
+                                <p className="text-sm text-destructive">{errors.descripcion}</p>
+                            )}
+                        </div>
                     </div>
-
-                    <Button disabled={processing} type="submit">
-                        Actualizar tipo de archivo
-                    </Button>
-                </form>
-            </div>
+                </FormLayout>
             </div>
         </AppLayout>
     );

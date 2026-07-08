@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -14,6 +13,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, useForm } from '@inertiajs/react';
 import { route } from 'ziggy-js';
 import { type FormEvent } from 'react';
+import { FormLayout } from '@/components/form-layout';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -53,104 +53,117 @@ export default function Create({ tipos }: { tipos: TipoOption[] }) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Carreras | Crear" />
-            <div className="flex justify-center px-4 py-6">
-            <div className="w-full max-w-2xl space-y-4 rounded-2xl border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 shadow-lg backdrop-blur-sm dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label>Tipo de carrera</Label>
-                        <Select
-                            value={
-                                data.tipo_carrera_id === ''
-                                    ? ''
-                                    : String(data.tipo_carrera_id)
-                            }
-                            onValueChange={(value) =>
-                                setData('tipo_carrera_id', Number(value))
-                            }
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Seleccioná un tipo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {tipos.map((tipo) => (
-                                    <SelectItem key={tipo.id} value={String(tipo.id)}>
-                                        {tipo.nombre}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        {errors.tipo_carrera_id && (
-                            <p className="text-sm text-destructive">{errors.tipo_carrera_id}</p>
-                        )}
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label htmlFor="nombre">Nombre</Label>
-                        <Input
-                            id="nombre"
-                            placeholder="Ej. Licenciatura en Sistemas"
-                            value={data.nombre}
-                            onChange={(e) => setData('nombre', e.target.value)}
-                        />
-                        {errors.nombre && (
-                            <p className="text-sm text-destructive">{errors.nombre}</p>
-                        )}
-                    </div>
+            <div className="mx-auto max-w-7xl px-4 py-8 animate-in fade-in duration-300">
+                <FormLayout
+                    onSubmit={handleSubmit}
+                    processing={processing}
+                    cancelHref={route('carreras.index')}
+                    submitLabel="Crear carrera"
+                    maxWidth="max-w-4xl"
+                >
+                    <div className="space-y-4">
+                        {/* Row 1: Nombre & Código */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="nombre">Nombre</Label>
+                                <Input
+                                    id="nombre"
+                                    placeholder="Ej. Licenciatura en Sistemas"
+                                    value={data.nombre}
+                                    onChange={(e) => setData('nombre', e.target.value)}
+                                    className="rounded-lg"
+                                />
+                                {errors.nombre && (
+                                    <p className="text-sm text-destructive">{errors.nombre}</p>
+                                )}
+                            </div>
 
-                    <div className="space-y-1.5">
-                        <Label htmlFor="codigo">Código</Label>
-                        <Input
-                            id="codigo"
-                            placeholder="Ej. LIC-SIS"
-                            value={data.codigo}
-                            onChange={(e) => setData('codigo', e.target.value)}
-                        />
-                        {errors.codigo && (
-                            <p className="text-sm text-destructive">{errors.codigo}</p>
-                        )}
-                    </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="codigo">Código</Label>
+                                <Input
+                                    id="codigo"
+                                    placeholder="Ej. LIC-SIS"
+                                    value={data.codigo}
+                                    onChange={(e) => setData('codigo', e.target.value)}
+                                    className="rounded-lg"
+                                />
+                                {errors.codigo && (
+                                    <p className="text-sm text-destructive">{errors.codigo}</p>
+                                )}
+                            </div>
+                        </div>
 
-                    <div className="space-y-1.5">
-                        <Label htmlFor="descripcion">Descripción</Label>
-                        <Textarea
-                            id="descripcion"
-                            placeholder="Descripción breve de la carrera"
-                            value={data.descripcion}
-                            onChange={(e) => setData('descripcion', e.target.value)}
-                        />
-                        {errors.descripcion && (
-                            <p className="text-sm text-destructive">{errors.descripcion}</p>
-                        )}
-                    </div>
+                        {/* Row 2: Tipo de carrera & Estado */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label>Tipo de carrera</Label>
+                                <Select
+                                    value={
+                                        data.tipo_carrera_id === ''
+                                            ? ''
+                                            : String(data.tipo_carrera_id)
+                                    }
+                                    onValueChange={(value) =>
+                                        setData('tipo_carrera_id', Number(value))
+                                    }
+                                >
+                                    <SelectTrigger className="rounded-lg">
+                                        <SelectValue placeholder="Seleccioná un tipo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {tipos.map((tipo) => (
+                                            <SelectItem key={tipo.id} value={String(tipo.id)}>
+                                                {tipo.nombre}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.tipo_carrera_id && (
+                                    <p className="text-sm text-destructive">{errors.tipo_carrera_id}</p>
+                                )}
+                            </div>
 
-                    <div className="space-y-1.5">
-                        <Label>Estado</Label>
-                        <Select
-                            value={data.estado}
-                            onValueChange={(value) =>
-                                setData('estado', value as 'activa' | 'inactiva')
-                            }
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Seleccioná un estado" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {estados.map((estado) => (
-                                    <SelectItem key={estado.value} value={estado.value}>
-                                        {estado.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        {errors.estado && (
-                            <p className="text-sm text-destructive">{errors.estado}</p>
-                        )}
-                    </div>
+                            <div className="space-y-1.5">
+                                <Label>Estado</Label>
+                                <Select
+                                    value={data.estado}
+                                    onValueChange={(value) =>
+                                        setData('estado', value as 'activa' | 'inactiva')
+                                    }
+                                >
+                                    <SelectTrigger className="rounded-lg">
+                                        <SelectValue placeholder="Seleccioná un estado" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {estados.map((estado) => (
+                                            <SelectItem key={estado.value} value={estado.value}>
+                                                {estado.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.estado && (
+                                    <p className="text-sm text-destructive">{errors.estado}</p>
+                                )}
+                            </div>
+                        </div>
 
-                    <Button disabled={processing} type="submit">
-                        Crear carrera
-                    </Button>
-                </form>
-            </div>
+                        {/* Row 3: Descripción (full width) */}
+                        <div className="space-y-1.5">
+                            <Label htmlFor="descripcion">Descripción</Label>
+                            <Textarea
+                                id="descripcion"
+                                placeholder="Descripción breve de la carrera"
+                                value={data.descripcion}
+                                onChange={(e) => setData('descripcion', e.target.value)}
+                                className="rounded-lg resize-none min-h-[120px]"
+                            />
+                            {errors.descripcion && (
+                                <p className="text-sm text-destructive">{errors.descripcion}</p>
+                            )}
+                        </div>
+                    </div>
+                </FormLayout>
             </div>
         </AppLayout>
     );

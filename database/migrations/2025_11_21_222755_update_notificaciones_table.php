@@ -12,11 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('notificaciones', function (Blueprint $table) {
-            $table->foreignId('actor_id')->nullable()->after('user_id')->constrained('users')->nullOnDelete();
-            $table->foreignId('archivo_id')->nullable()->after('actor_id')->constrained('archivos')->nullOnDelete();
-            $table->string('titulo')->after('tipo');
-            $table->text('mensaje')->nullable()->after('titulo');
-            $table->json('data')->nullable()->change();
+            if (!Schema::hasColumn('notificaciones', 'actor_id')) {
+                $table->foreignId('actor_id')->nullable()->after('user_id')->constrained('users')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('notificaciones', 'archivo_id')) {
+                $table->foreignId('archivo_id')->nullable()->after('actor_id')->constrained('archivos')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('notificaciones', 'titulo')) {
+                $table->string('titulo')->after('tipo');
+            }
+            if (!Schema::hasColumn('notificaciones', 'mensaje')) {
+                $table->text('mensaje')->nullable()->after('titulo');
+            }
         });
     }
 

@@ -4,12 +4,10 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDelete } from '@/components/confirm-delete';
 import { route } from 'ziggy-js';
-import { Card, CardContent } from '@/components/ui/card';
-import { ListSection } from '@/components/list-section';
 import { DataTable } from '@/components/data-table';
 import { type ColumnDef } from '@tanstack/react-table';
 import { ArrowUpDown } from 'lucide-react';
-import Pagination from '@/components/pagination';
+import { ListLayout } from '@/components/list-layout';
 
 interface Permiso {
   id: number;
@@ -41,6 +39,7 @@ export default function Index({ permissions }: { permissions: Paginated }) {
           <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
         </Button>
       ),
+      cell: ({ getValue }) => <span className="font-medium">{getValue<number>()}</span>,
     },
     {
       accessorKey: 'name',
@@ -54,6 +53,7 @@ export default function Index({ permissions }: { permissions: Paginated }) {
           <ArrowUpDown className="ml-1 h-3.5 w-3.5" />
         </Button>
       ),
+      cell: ({ getValue }) => <span className="font-semibold text-slate-900 dark:text-slate-100">{getValue<string>()}</span>,
     },
     {
       accessorKey: 'created_at',
@@ -78,16 +78,16 @@ export default function Index({ permissions }: { permissions: Paginated }) {
         return (
           <div className="flex w-full justify-end gap-2 pr-1">
             <Link href={route('permissions.edit', perm.id)}>
-              <Button size="sm" variant="secondary">
+              <Button size="sm" variant="secondary" className="rounded-lg">
                 Editar
               </Button>
             </Link>
             <ConfirmDelete
               disabled={processing}
               onConfirm={() => destroy(route('permissions.destroy', perm.id))}
-              description="El permiso se eliminará definitivamente."
+              description="El permiso se eliminará definitivamente de la base de datos."
             >
-              <Button size="sm" variant="destructive" disabled={processing}>
+              <Button size="sm" variant="destructive" className="rounded-lg" disabled={processing}>
                 Eliminar
               </Button>
             </ConfirmDelete>
@@ -99,33 +99,20 @@ export default function Index({ permissions }: { permissions: Paginated }) {
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title="Permisos" />
-      <div className="m-4 space-y-4">
-        <section className="rounded-2xl border border-border/60 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-5 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-        <ListSection
-          title="Permisos"
-          description="Define las acciones que pueden ejecutar roles dentro del sistema."
-          actions={
-            <Link href={route('permissions.create')}>
-              <Button>Crear permiso</Button>
-            </Link>
-          }
+      <Head title="Permisos | Gestión" />
+      <ListLayout
+        title="Gestión de Permisos"
+        createHref={route('permissions.create')}
+        createLabel="Crear permiso"
+        paginationLinks={permissions.links}
+      >
+        <DataTable
+          columns={columns}
+          data={permissions.data}
+          filterKey="name"
+          placeholder="Buscar por nombre..."
         />
-        </section>
-        <Card className="border-2 border-border/70 bg-gradient-to-r from-slate-100 via-slate-50 to-white p-4 text-slate-900 shadow-lg backdrop-blur dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 dark:text-slate-50">
-          <CardContent className="space-y-4">
-            <DataTable
-              columns={columns}
-              data={permissions.data}
-              filterKey="name"
-              placeholder="Buscar por nombre..."
-            />
-            <div className="flex justify-end">
-              <Pagination links={permissions.links} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      </ListLayout>
     </AppLayout>
   );
 }

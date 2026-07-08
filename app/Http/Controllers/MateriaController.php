@@ -152,8 +152,15 @@ class MateriaController extends Controller
 
     private function sincronizarAsignaciones(Materia $materia, $asignaciones): void
     {
-        $carreraIds = $asignaciones->pluck('carrera_id')->unique()->all();
-        $materia->carreras()->sync($carreraIds);
+        $carreraSyncData = [];
+        foreach ($asignaciones as $asig) {
+            $carreraId = (int) $asig['carrera_id'];
+            $carreraSyncData[$carreraId] = [
+                'anio_sugerido' => isset($asig['anio_sugerido']) && $asig['anio_sugerido'] !== '' ? (int) $asig['anio_sugerido'] : null,
+                'cuatrimestre' => isset($asig['cuatrimestre']) && $asig['cuatrimestre'] !== '' ? (int) $asig['cuatrimestre'] : null,
+            ];
+        }
+        $materia->carreras()->sync($carreraSyncData);
 
         $planes = $asignaciones
             ->pluck('plan_estudio_id')
